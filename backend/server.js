@@ -1,10 +1,12 @@
 const express = require("express");
 const mongoose = require("mongoose");
+const cors = require("cors");
 
 const app = express();
 
-// Middleware to parse JSON
+// Middleware to parse JSON and handle CORS
 app.use(express.json());
+app.use(cors());
 
 // User Schema and Model
 const userSchema = new mongoose.Schema({
