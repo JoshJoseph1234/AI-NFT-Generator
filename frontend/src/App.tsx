@@ -115,21 +115,21 @@ function App() {
           <div className="relative w-[500px] h-[500px]">
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-96 bg-gradient-to-br from-[#ADFF2F]/20 to-transparent border border-[#ADFF2F]/30 rounded-lg overflow-hidden animate-float">
               <img 
-                src="https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?auto=format&fit=crop&q=80&w=1000" 
+                src="https://img.freepik.com/free-photo/3d-rendering-financial-neon-bull_23-2151691919.jpg?t=st=1738762234~exp=1738765834~hmac=9fb50eb8e93bcf7fb5da6f1a187000fb0bde41cad4e1b828fc98f9f25c44b543&w=740" 
                 alt="NFT Art"
                 className="w-full h-full object-cover mix-blend-screen"
               />
             </div>
             <div className="absolute top-0 right-0 w-48 h-60 bg-gradient-to-br from-[#ADFF2F]/20 to-transparent border border-[#ADFF2F]/30 rounded-lg overflow-hidden rotate-12 animate-float-delayed-1">
               <img 
-                src="https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?auto=format&fit=crop&q=80&w=1000" 
+                src="https://img.freepik.com/free-photo/anime-character-using-virtual-reality-glasses-metaverse_23-2151568829.jpg?t=st=1738762333~exp=1738765933~hmac=caafb23630a0e449b3836f777488a47585944639124cf1760865c78785e1ed4f&w=740" 
                 alt="NFT Art"
                 className="w-full h-full object-cover mix-blend-screen"
               />
             </div>
             <div className="absolute bottom-0 left-0 w-48 h-60 bg-gradient-to-br from-[#ADFF2F]/20 to-transparent border border-[#ADFF2F]/30 rounded-lg overflow-hidden -rotate-12 animate-float-delayed-2">
               <img 
-                src="https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?auto=format&fit=crop&q=80&w=1000" 
+                src="https://img.freepik.com/free-photo/cyberpunk-bitcoin-illustration_23-2151611169.jpg?t=st=1738761756~exp=1738765356~hmac=256f1007860b251f3aa0447718408d96b34c68f889553e6647894ca68f0be771&w=740" 
                 alt="NFT Art"
                 className="w-full h-full object-cover mix-blend-screen"
               />
