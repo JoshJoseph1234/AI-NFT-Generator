@@ -1,17 +1,39 @@
 import React, { useState } from 'react';
-import { Hexagon, ArrowLeft, Wand2 } from 'lucide-react';
+import { Hexagon, ArrowLeft, Wand2, Download } from 'lucide-react';
+import { generateImage } from '../api/generate';
 
 const NFTGenerator = () => {
   const [prompt, setPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     if (!prompt) return;
     setIsGenerating(true);
-    // Here you would typically make an API call to your AI image generation service
-    setTimeout(() => {
+    setError(null);
+    setGeneratedImage(null);
+
+    try {
+      console.log('Generating image with prompt:', prompt);
+      const imageUrl = await generateImage(prompt);
+      console.log('Received image URL:', imageUrl);
+
+      // Pre-load the image
+      await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = resolve;
+        img.onerror = () => reject(new Error('Failed to load image'));
+        img.src = imageUrl;
+      });
+
+      setGeneratedImage(imageUrl);
+    } catch (err) {
+      console.error('Error generating image:', err);
+      setError(err instanceof Error ? err.message : 'Failed to generate NFT. Please try again.');
+    } finally {
       setIsGenerating(false);
-    }, 2000);
+    }
   };
 
   return (
@@ -48,6 +70,36 @@ const NFTGenerator = () => {
               placeholder="Enter a detailed description of the NFT you want to generate..."
             />
           </div>
+
+          {error && (
+            <div className="mb-6 p-4 bg-red-500/20 border border-red-500/50 rounded-lg text-red-400 text-sm">
+              {error}
+            </div>
+          )}
+
+          {generatedImage && (
+            <div className="mb-6">
+              <div className="relative aspect-[3/2] rounded-lg overflow-hidden">
+                <img 
+                  src={generatedImage} 
+                  alt="Generated NFT"
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    console.error('Image failed to load:', generatedImage);
+                    setError('Failed to load generated image.');
+                    // Optionally retry loading the image
+                    const img = e.target as HTMLImageElement;
+                    if (!img.dataset.retried) {
+                      img.dataset.retried = 'true';
+                      setTimeout(() => {
+                        img.src = generatedImage!;
+                      }, 1000);
+                    }
+                  }}
+                />
+              </div>
+            </div>
+          )}
 
           <button
             onClick={handleGenerate}
