@@ -14,7 +14,7 @@ app.use(cors());
 app.use(express.json());
 
 // Use the stable diffusion model instead
-const MODEL_VERSION = "stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b";
+const MODEL_VERSION = "black-forest-labs/flux-1.1-pro-ultra";
 
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN.trim(),
@@ -30,23 +30,34 @@ app.post('/api/generate', async (req, res) => {
   try {
     console.log('Starting image generation with prompt:', prompt);
     
-    const output = await replicate.run(MODEL_VERSION, {
+    // Create prediction
+    const prediction = await replicate.predictions.create({
+      version: MODEL_VERSION,
       input: {
         prompt,
-        width: 1024,
-        height: 683,  // Maintains roughly 3:2 aspect ratio
-        num_outputs: 1,
-        scheduler: "K_EULER",
-        num_inference_steps: 50,
-        guidance_scale: 7.5,
+        aspect_ratio: "3:2",
+        output_format: "jpg",
+        safety_tolerance: 2,
+        image_prompt_strength: 0.1
       }
     });
 
-    console.log('Raw output:', output);
+    console.log('Prediction created:', prediction.id);
 
-    // Handle the output (SDXL returns an array of URLs)
-    const imageUrl = Array.isArray(output) ? output[0] : output;
-    console.log('Image URL:', imageUrl);
+    // Poll for completion
+    let result = await replicate.predictions.get(prediction.id);
+    while (result.status !== 'succeeded' && result.status !== 'failed') {
+      console.log('Status:', result.status);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      result = await replicate.predictions.get(prediction.id);
+    }
+
+    if (result.status === 'failed') {
+      throw new Error('Prediction failed: ' + (result.error || 'Unknown error'));
+    }
+
+    const imageUrl = Array.isArray(result.output) ? result.output[0] : result.output;
+    console.log('Generated image URL:', imageUrl);
     res.json({ imageUrl });
 
   } catch (error) {

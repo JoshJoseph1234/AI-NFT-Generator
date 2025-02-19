@@ -23,11 +23,14 @@ export async function generateImage(prompt: string): Promise<string> {
       throw new Error(data.error || data.details || 'Failed to generate image');
     }
 
-    // Handle both array and string responses
+    if (!data.imageUrl) {
+      throw new Error('No image URL in response');
+    }
+
     const imageUrl = Array.isArray(data.imageUrl) ? data.imageUrl[0] : data.imageUrl;
 
-    if (!imageUrl || typeof imageUrl !== 'string') {
-      throw new Error('Invalid image URL received');
+    if (typeof imageUrl !== 'string') {
+      throw new Error('Invalid image URL format');
     }
 
     console.log('Received valid image URL:', imageUrl);
