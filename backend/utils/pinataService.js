@@ -1,13 +1,21 @@
 const axios = require('axios');
 const FormData = require('form-data');
+require('dotenv').config();
 
 class PinataService {
   constructor() {
-    if (!process.env.PINATA_API_KEY || !process.env.PINATA_SECRET_KEY) {
+    const apiKey = process.env.PINATA_API_KEY;
+    const secretKey = process.env.PINATA_SECRET_KEY;
+
+    if (!apiKey || !secretKey) {
+      console.error('Missing Pinata API keys in environment variables:');
+      console.error('PINATA_API_KEY:', apiKey ? 'Set' : 'Missing');
+      console.error('PINATA_SECRET_KEY:', secretKey ? 'Set' : 'Missing');
       throw new Error('Pinata API keys not configured');
     }
-    this.apiKey = process.env.PINATA_API_KEY;
-    this.secretKey = process.env.PINATA_SECRET_KEY;
+
+    this.apiKey = apiKey;
+    this.secretKey = secretKey;
   }
 
   async uploadImage(imageUrl) {

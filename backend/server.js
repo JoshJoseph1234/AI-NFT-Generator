@@ -1,8 +1,12 @@
+require('dotenv').config();
+const validateEnv = require('./utils/validateEnv');
 const express = require('express');
 const cors = require('cors');
 const Replicate = require('replicate');
 const pinataService = require('./utils/pinataService');
-require('dotenv').config();
+
+// Validate environment variables before starting the server
+validateEnv();
 
 if (!process.env.REPLICATE_API_TOKEN) {
   console.error('ERROR: REPLICATE_API_TOKEN is not set');
