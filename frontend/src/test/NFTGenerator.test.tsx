@@ -19,10 +19,15 @@ jest.mock('../api/generate', () => ({
   generateImage: jest.fn()
 }));
 
+import { Mock } from 'jest';
+
+let mockContract: {
+  mintNFT: Mock;
+};
+
 describe('NFTGenerator', () => {
   let mockProvider;
   let mockSigner;
-  let mockContract;
 
   beforeEach(() => {
     // Reset mocks
