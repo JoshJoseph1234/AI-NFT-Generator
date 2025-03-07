@@ -1,9 +1,13 @@
+require('dotenv').config();
+const validateEnv = require('./utils/validateEnv');
 const express = require('express');
 const cors = require('cors');
 const Replicate = require('replicate');
-require('dotenv').config();
+const pinataService = require('./utils/pinataService');
 
-// Validate environment
+// Validate environment variables before starting the server
+validateEnv();
+
 if (!process.env.REPLICATE_API_TOKEN) {
   console.error('ERROR: REPLICATE_API_TOKEN is not set');
   process.exit(1);
@@ -13,7 +17,6 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Use the stable diffusion model instead
 const MODEL_VERSION = "black-forest-labs/flux-1.1-pro-ultra";
 
 const replicate = new Replicate({
@@ -30,7 +33,6 @@ app.post('/api/generate', async (req, res) => {
   try {
     console.log('Starting image generation with prompt:', prompt);
     
-    // Create prediction
     const prediction = await replicate.predictions.create({
       version: MODEL_VERSION,
       input: {
@@ -44,7 +46,6 @@ app.post('/api/generate', async (req, res) => {
 
     console.log('Prediction created:', prediction.id);
 
-    // Poll for completion
     let result = await replicate.predictions.get(prediction.id);
     while (result.status !== 'succeeded' && result.status !== 'failed') {
       console.log('Status:', result.status);
@@ -58,7 +59,38 @@ app.post('/api/generate', async (req, res) => {
 
     const imageUrl = Array.isArray(result.output) ? result.output[0] : result.output;
     console.log('Generated image URL:', imageUrl);
-    res.json({ imageUrl });
+    
+    console.log('Uploading to Pinata...');
+    const ipfsImageUrl = await pinataService.uploadImage(imageUrl);
+    console.log('IPFS Image URL:', ipfsImageUrl);
+
+    const metadata = {
+      name: `AI NFT - ${prompt.slice(0, 30)}...`,
+      description: prompt,
+      image: ipfsImageUrl,
+      attributes: [
+        {
+          trait_type: 'Generator',
+          value: 'AI NFT Generator'
+        },
+        {
+          trait_type: 'Prompt',
+          value: prompt
+        }
+      ]
+    };
+
+    const metadataUrl = await pinataService.uploadMetadata(metadata);
+    console.log('Metadata URL:', metadataUrl);
+
+    res.json({ 
+      imageUrl,
+      ipfs: {
+        imageUrl: ipfsImageUrl,
+        metadataUrl
+      },
+      metadata
+    });
 
   } catch (error) {
     console.error('Server error:', error);

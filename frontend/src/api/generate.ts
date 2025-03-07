@@ -4,7 +4,28 @@ const replicate = new Replicate({
   auth: process.env.VITE_REPLICATE_API_TOKEN,
 });
 
-export async function generateImage(prompt: string): Promise<string> {
+export interface IPFSData {
+  imageUrl: string;
+  metadataUrl: string;
+}
+
+export interface NFTMetadata {
+  name: string;
+  description: string;
+  image: string;
+  attributes: Array<{
+    trait_type: string;
+    value: string;
+  }>;
+}
+
+export interface GenerationResponse {
+  imageUrl: string;
+  ipfs: IPFSData;
+  metadata: NFTMetadata;
+}
+
+export async function generateImage(prompt: string): Promise<GenerationResponse> {
   try {
     console.log('Sending request with prompt:', prompt);
     
@@ -23,18 +44,11 @@ export async function generateImage(prompt: string): Promise<string> {
       throw new Error(data.error || data.details || 'Failed to generate image');
     }
 
-    if (!data.imageUrl) {
-      throw new Error('No image URL in response');
+    if (!data.imageUrl || !data.ipfs) {
+      throw new Error('Invalid response format');
     }
 
-    const imageUrl = Array.isArray(data.imageUrl) ? data.imageUrl[0] : data.imageUrl;
-
-    if (typeof imageUrl !== 'string') {
-      throw new Error('Invalid image URL format');
-    }
-
-    console.log('Received valid image URL:', imageUrl);
-    return imageUrl;
+    return data;
   } catch (error) {
     console.error('Error in generateImage:', error);
     throw error;

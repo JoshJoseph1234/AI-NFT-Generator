@@ -16,5 +16,9 @@
   "bugs": {
     "url": "https://github.com/JoshJoseph1234/AI-NFT-Generator/issues"
   },
-  "homepage": "https://github.com/JoshJoseph1234/AI-NFT-Generator#readme"
+  "homepage": "https://github.com/JoshJoseph1234/AI-NFT-Generator#readme",
+  "devDependencies": {
+    "@types/jest": "^29.5.14",
+    "@types/testing-library__jest-dom": "^5.14.9"
+  }
 }

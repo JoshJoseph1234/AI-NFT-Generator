@@ -1,0 +1,41 @@
+# Dependencies
+node_modules
+coverage
+coverage.json
+
+# Hardhat files
+cache
+artifacts
+typechain
+typechain-types
+
+# Environment variables
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# IDE & OS specific files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+hardhat.log*
+
+# Contract deployment info
+deployments
+
+# Build files
+dist
+build
