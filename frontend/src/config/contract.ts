@@ -1,88 +1,22 @@
 import { ethers } from "ethers";
 
-export const CONTRACT_ADDRESS = "0x8d606D9c599634b91F94aEA6515B7dE8500Bce4f"; // Your deployed contract address
+export const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS;
+
+// Update ABI to include all functions
 export const CONTRACT_ABI = [
-  {
-    "inputs": [],
-    "stateMutability": "nonpayable",
-    "type": "constructor"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "owner",
-        "type": "address"
-      },
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "approved",
-        "type": "address"
-      },
-      {
-        "indexed": true,
-        "internalType": "uint256",
-        "name": "tokenId",
-        "type": "uint256"
-      }
-    ],
-    "name": "Approval",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "tokenId",
-        "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "address",
-        "name": "recipient",
-        "type": "string"
-      },
-      {
-        "indexed": false,
-        "internalType": "string",
-        "name": "tokenURI",
-        "type": "string"
-      }
-    ],
-    "name": "NFTMinted",
-    "type": "event"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "recipient",
-        "type": "address"
-      },
-      {
-        "internalType": "string",
-        "name": "tokenURI",
-        "type": "string"
-      }
-    ],
-    "name": "mintNFT",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  }
+  "function mintNFT(address recipient, string memory tokenURI) public returns (uint256)",
+  "function ownerOf(uint256 tokenId) public view returns (address)",
+  "function tokenURI(uint256 tokenId) public view returns (string memory)",
+  "function getUserTokens(address user) public view returns (uint256[] memory)",
+  "function getUserTokenURIs(address user) public view returns (string[] memory)",
+  "function totalSupply() public view returns (uint256)",
+  "event NFTMinted(uint256 tokenId, address recipient, string tokenURI)"
 ];
 
-export const getContract = (providerOrSigner: ethers.Signer | ethers.providers.Provider) => {
-  return new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, providerOrSigner);
+export const getContract = (signerOrProvider: ethers.Signer | ethers.providers.Provider) => {
+  if (!CONTRACT_ADDRESS) {
+    throw new Error("Contract address not configured");
+  }
+  console.log("Creating contract instance with address:", CONTRACT_ADDRESS);
+  return new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signerOrProvider);
 };

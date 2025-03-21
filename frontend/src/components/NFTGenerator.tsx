@@ -1,73 +1,42 @@
 import React, { useState } from 'react';
-import { Hexagon, ArrowLeft, Wand2, Wallet } from 'lucide-react';
+import { Hexagon, ArrowLeft, Wand2, Wallet, LogOut } from 'lucide-react';
 import { generateImage } from '../api/generate';
 import { getContract } from '../config/contract';
-import { ethers } from 'ethers';
+import { useWallet } from '../context/WalletContext';
+import Debug from './Debug';
+import UserNFTs from './UserNFTs';
 
 const NFTGenerator = () => {
+  const { address, provider, signer, connectWallet, disconnectWallet, error: walletError } = useWallet();
   const [prompt, setPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState<number>(0);
   const [isMinting, setIsMinting] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [metadataUrl, setMetadataUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const connectWallet = async () => {
-    try {
-      if (!window.ethereum) {
-        throw new Error("MetaMask is required!");
-      }
-      await window.ethereum.request({ method: 'eth_requestAccounts' });
-      return true;
-    } catch (err) {
-      console.error('Failed to connect wallet:', err);
-      setError('Failed to connect wallet. Please install MetaMask.');
-      return false;
-    }
-  };
-
-  const setupNetwork = async () => {
-    try {
-      await window.ethereum.request({
-        method: 'wallet_switchEthereumChain',
-        params: [{ chainId: '0xaa36a7' }], // Sepolia chainId
-      });
-    } catch (switchError: any) {
-      // If network doesn't exist, add it
-      if (switchError.code === 4902) {
-        try {
-          await window.ethereum.request({
-            method: 'wallet_addEthereumChain',
-            params: [
-              {
-                chainId: '0xaa36a7',
-                chainName: 'Sepolia Test Network',
-                nativeCurrency: {
-                  name: 'ETH',
-                  symbol: 'ETH',
-                  decimals: 18,
-                },
-                rpcUrls: ['https://sepolia.infura.io/v3/'],
-                blockExplorerUrls: ['https://sepolia.etherscan.io/'],
-              },
-            ],
-          });
-        } catch (addError) {
-          console.error('Error adding network:', addError);
-        }
-      }
-    }
-  };
-
   const handleGenerate = async () => {
     if (!prompt) return;
+    
     setIsGenerating(true);
+    setGenerationProgress(0);
     setError(null);
     setGeneratedImage(null);
     setMetadataUrl(null);
 
     try {
+      // Start progress simulation
+      const progressInterval = setInterval(() => {
+        setGenerationProgress(prev => Math.min(prev + 2, 95));
+      }, 1000);
+
       const response = await generateImage(prompt);
+      
+      // Complete progress
+      clearInterval(progressInterval);
+      setGenerationProgress(100);
+      
       setGeneratedImage(response.ipfs.imageUrl);
       setMetadataUrl(response.ipfs.metadataUrl);
     } catch (err) {
@@ -79,48 +48,49 @@ const NFTGenerator = () => {
   };
 
   const handleMint = async () => {
-    if (!metadataUrl) return;
-    
+    if (!metadataUrl || !signer || !address) {
+      setError('Please connect wallet first');
+      return;
+    }
+
     setIsMinting(true);
     setError(null);
 
     try {
-      const connected = await connectWallet();
-      if (!connected) return;
+      console.log('🔄 Starting mint process...');
+      console.log('MetadataUrl:', metadataUrl);
+      console.log('User address:', address);
 
-      // Setup network
-      await setupNetwork();
-
-      // Initialize provider
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      await provider.send("eth_requestAccounts", []); // Request account access
-      
-      const signer = provider.getSigner();
-      const address = await signer.getAddress(); // Get the connected wallet address
-      
-      console.log("Connected wallet address:", address);
-      console.log("Metadata URL:", metadataUrl);
-      
       const contract = getContract(signer);
-      console.log("Contract address:", contract.address);
+      console.log('Contract instance created');
 
-      // Mint NFT
-      const tx = await contract.mintNFT(address, metadataUrl);
-      console.log("Transaction hash:", tx.hash);
+      // Estimate gas
+      const gasEstimate = await contract.estimateGas.mintNFT(address, metadataUrl);
+      console.log('⛽ Gas estimate:', gasEstimate.toString());
+
+      // Send transaction with 20% gas buffer
+      const tx = await contract.mintNFT(address, metadataUrl, {
+        gasLimit: gasEstimate.mul(120).div(100)
+      });
+
+      console.log('📤 Transaction sent:', tx.hash);
       
-      // Wait for transaction confirmation
       const receipt = await tx.wait();
-      console.log("Transaction receipt:", receipt);
+      console.log('✅ Transaction confirmed:', receipt);
 
-      // Find the NFTMinted event
       const event = receipt.events?.find(e => e.event === 'NFTMinted');
-      const tokenId = event?.args?.tokenId?.toString();
+      const tokenId = event?.args?.tokenId.toString();
 
-      setError(null);
       alert(`NFT minted successfully! Token ID: ${tokenId}`);
+      
+      // Refresh user's NFTs
+      if (provider) {
+        await loadUserNFTs();
+      }
+
     } catch (err) {
-      console.error('Minting error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to mint NFT');
+      console.error('❌ Minting error:', err);
+      setError(`Minting failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
     } finally {
       setIsMinting(false);
     }
@@ -134,7 +104,7 @@ const NFTGenerator = () => {
       <nav className="relative flex justify-between items-center p-6">
         <div className="flex items-center space-x-2">
           <Hexagon className="text-[#ADFF2F]" size={24} />
-          <span className="text-xl font-mono tracking-wider">NFTCONNECT</span>
+          <span className="text-xl font-mono tracking-wider">OPULENT NFTs</span>
         </div>
         <button 
           onClick={() => window.location.reload()}
@@ -146,8 +116,33 @@ const NFTGenerator = () => {
       </nav>
 
       <div className="max-w-4xl mx-auto px-6 py-12">
-        <h1 className="text-4xl font-light mb-8 text-[#ADFF2F]">Create Your NFT</h1>
-        
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-4xl font-light text-[#ADFF2F]">Create Your NFT</h1>
+          
+          {!address ? (
+            <button
+              onClick={connectWallet}
+              className="px-6 py-2 bg-[#ADFF2F] text-black rounded-lg font-mono flex items-center space-x-2"
+            >
+              <Wallet size={20} />
+              <span>CONNECT WALLET</span>
+            </button>
+          ) : (
+            <div className="flex items-center space-x-4">
+              <span className="font-mono text-sm">
+                {`${address.slice(0, 6)}...${address.slice(-4)}`}
+              </span>
+              <button
+                onClick={disconnectWallet}
+                className="px-4 py-2 bg-red-500/20 text-red-400 rounded-lg font-mono flex items-center space-x-2"
+              >
+                <LogOut size={16} />
+                <span>DISCONNECT</span>
+              </button>
+            </div>
+          )}
+        </div>
+
         <div className="bg-black/40 backdrop-blur-sm border border-[#ADFF2F]/30 p-8 rounded-lg">
           <div className="mb-6">
             <label className="block text-sm font-mono text-gray-400 mb-2">
@@ -204,9 +199,24 @@ const NFTGenerator = () => {
             }`}
           >
             <Wand2 size={20} />
-            <span>{isGenerating ? 'GENERATING...' : 'GENERATE NFT'}</span>
+            <span>{isGenerating ? 'GENERATING...' : 'GENERATE IMAGE'}</span>
           </button>
         </div>
+
+        {address && provider && (
+          <div className="mt-12">
+            <h2 className="text-2xl font-light mb-6 text-[#ADFF2F]">Your NFTs</h2>
+            <UserNFTs userAddress={address} provider={provider} />
+          </div>
+        )}
+
+        <Debug
+          wallet={{ address, provider, signer }}
+          metadataUrl={metadataUrl}
+          isGenerating={isGenerating}
+          isMinting={isMinting}
+          error={error || walletError}
+        />
       </div>
     </div>
   );
