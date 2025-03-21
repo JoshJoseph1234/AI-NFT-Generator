@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Hexagon, ArrowLeft, Wand2, Wallet, LogOut } from 'lucide-react';
 import { generateImage } from '../api/generate';
 import { getContract } from '../config/contract';
 import { useWallet } from '../context/WalletContext';
-import Debug from './Debug';
 import UserNFTs from './UserNFTs';
 
 const NFTGenerator = () => {
@@ -15,6 +14,16 @@ const NFTGenerator = () => {
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [metadataUrl, setMetadataUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [localError, setLocalError] = useState<string | null>(null);
+
+  // Debug: Log wallet state changes
+  useEffect(() => {
+    console.log('Wallet State Changed:', {
+      isConnected: !!address,
+      address,
+      error: walletError
+    });
+  }, [address, walletError]);
 
   const handleGenerate = async () => {
     if (!prompt) return;
@@ -49,7 +58,7 @@ const NFTGenerator = () => {
 
   const handleMint = async () => {
     if (!metadataUrl || !signer || !address) {
-      setError('Please connect wallet first');
+      setError('Please connect wallet and generate image first');
       return;
     }
 
@@ -57,20 +66,28 @@ const NFTGenerator = () => {
     setError(null);
 
     try {
-      console.log('🔄 Starting mint process...');
-      console.log('MetadataUrl:', metadataUrl);
-      console.log('User address:', address);
+      console.log('🔄 Starting mint process...', {
+        metadataUrl,
+        address,
+        hasSigner: !!signer
+      });
 
       const contract = getContract(signer);
-      console.log('Contract instance created');
+      console.log('📝 Contract instance created:', await contract.getAddress());
 
-      // Estimate gas
-      const gasEstimate = await contract.estimateGas.mintNFT(address, metadataUrl);
-      console.log('⛽ Gas estimate:', gasEstimate.toString());
+      // Estimate gas with error handling
+      let gasEstimate;
+      try {
+        gasEstimate = await contract.estimateGas.mintNFT(address, metadataUrl);
+        console.log('⛽ Gas estimate:', gasEstimate.toString());
+      } catch (gasError) {
+        console.error('Gas estimation failed:', gasError);
+        throw new Error('Failed to estimate gas. Please check your wallet balance.');
+      }
 
-      // Send transaction with 20% gas buffer
+      // Send transaction
       const tx = await contract.mintNFT(address, metadataUrl, {
-        gasLimit: gasEstimate.mul(120).div(100)
+        gasLimit: gasEstimate.mul(120).div(100) // Add 20% buffer
       });
 
       console.log('📤 Transaction sent:', tx.hash);
@@ -79,20 +96,37 @@ const NFTGenerator = () => {
       console.log('✅ Transaction confirmed:', receipt);
 
       const event = receipt.events?.find(e => e.event === 'NFTMinted');
-      const tokenId = event?.args?.tokenId.toString();
-
-      alert(`NFT minted successfully! Token ID: ${tokenId}`);
-      
-      // Refresh user's NFTs
-      if (provider) {
-        await loadUserNFTs();
+      if (!event) {
+        throw new Error('NFTMinted event not found in transaction receipt');
       }
+
+      const tokenId = event.args?.tokenId.toString();
+      alert(`NFT minted successfully! Token ID: ${tokenId}`);
 
     } catch (err) {
       console.error('❌ Minting error:', err);
       setError(`Minting failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
     } finally {
       setIsMinting(false);
+    }
+  };
+
+  const handleConnectWallet = async () => {
+    console.log('🔄 Connect wallet button clicked');
+    try {
+      const success = await connectWallet();
+      console.log('Connection attempt result:', success);
+      
+      if (!success) {
+        setLocalError('Wallet connection failed');
+        console.error('❌ Connection failed');
+      } else {
+        console.log('✅ Wallet connected successfully');
+        setLocalError(null);
+      }
+    } catch (err) {
+      console.error('❌ Connection error:', err);
+      setLocalError('Failed to connect wallet');
     }
   };
 
@@ -121,8 +155,9 @@ const NFTGenerator = () => {
           
           {!address ? (
             <button
-              onClick={connectWallet}
-              className="px-6 py-2 bg-[#ADFF2F] text-black rounded-lg font-mono flex items-center space-x-2"
+              onClick={handleConnectWallet}
+              className="px-6 py-2 bg-[#ADFF2F] hover:bg-[#9AE62F] text-black rounded-lg font-mono flex items-center space-x-2 transition-colors cursor-pointer"
+              type="button"
             >
               <Wallet size={20} />
               <span>CONNECT WALLET</span>
@@ -203,20 +238,18 @@ const NFTGenerator = () => {
           </button>
         </div>
 
+        {(localError || walletError) && (
+          <div className="mt-4 p-4 bg-red-500/20 text-red-400 rounded-lg">
+            {localError || walletError}
+          </div>
+        )}
+
         {address && provider && (
           <div className="mt-12">
             <h2 className="text-2xl font-light mb-6 text-[#ADFF2F]">Your NFTs</h2>
             <UserNFTs userAddress={address} provider={provider} />
           </div>
         )}
-
-        <Debug
-          wallet={{ address, provider, signer }}
-          metadataUrl={metadataUrl}
-          isGenerating={isGenerating}
-          isMinting={isMinting}
-          error={error || walletError}
-        />
       </div>
     </div>
   );

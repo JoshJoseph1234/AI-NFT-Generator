@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { ethers } from 'ethers';
 
 interface WalletContextType {
@@ -10,14 +10,7 @@ interface WalletContextType {
   error: string | null;
 }
 
-export const WalletContext = createContext<WalletContextType>({
-  address: null,
-  provider: null,
-  signer: null,
-  connectWallet: async () => false,
-  disconnectWallet: () => {},
-  error: null
-});
+export const WalletContext = createContext<WalletContextType>({} as WalletContextType);
 
 export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [address, setAddress] = useState<string | null>(null);
@@ -27,82 +20,100 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const connectWallet = useCallback(async () => {
     try {
-      console.log('🔄 Starting wallet connection...');
-      
-      if (!window.ethereum) {
-        throw new Error('MetaMask is not installed! Please install MetaMask.');
+      // Check if MetaMask is installed
+      if (typeof window.ethereum === 'undefined') {
+        throw new Error('MetaMask is not installed. Please install MetaMask or use a compatible wallet.');
       }
-
-      // Request account access
-      const accounts = await window.ethereum.request({
-        method: 'eth_requestAccounts'
-      });
-      console.log('📱 Connected accounts:', accounts);
-
-      if (!accounts || accounts.length === 0) {
-        throw new Error('No accounts found');
-      }
-
-      // Initialize Web3Provider
+  
+      // Create Web3Provider instance
       const web3Provider = new ethers.providers.Web3Provider(window.ethereum);
-      console.log('🔗 Provider initialized');
-
-      // Get network and switch to Sepolia if needed
-      const network = await web3Provider.getNetwork();
-      console.log('🌐 Current network:', network.chainId);
-
-      if (network.chainId !== 11155111) {
-        await switchToSepolia(web3Provider);
+  
+      // Request account access - this triggers the MetaMask popup
+      const accounts = await web3Provider.send('eth_requestAccounts', []);
+      if (!accounts || accounts.length === 0) {
+        throw new Error('No accounts found. Please connect your wallet.');
       }
-
+  
+      // Get the signer
       const web3Signer = web3Provider.getSigner();
       const userAddress = await web3Signer.getAddress();
-
-      setAddress(userAddress);
+  
+      // Check if we're on the Sepolia network
+      const network = await web3Provider.getNetwork();
+      if (network.chainId !== 11155111) { // Sepolia chain ID
+        try {
+          // Try to switch to Sepolia
+          await window.ethereum.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: '0xaa36a7' }], // Sepolia chainId in hex
+          });
+        } catch (switchError: any) {
+          // If Sepolia is not added to MetaMask, add it
+          if (switchError.code === 4902) {
+            const alchemyApiKey = import.meta.env.VITE_ALCHEMY_API_KEY;
+            if (!alchemyApiKey) {
+              throw new Error('Alchemy API key is missing. Please configure your environment variables.');
+            }
+  
+            await window.ethereum.request({
+              method: 'wallet_addEthereumChain',
+              params: [{
+                chainId: '0xaa36a7',
+                chainName: 'Sepolia',
+                nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
+                rpcUrls: [`https://eth-sepolia.g.alchemy.com/v2/${alchemyApiKey}`],
+                blockExplorerUrls: ['https://sepolia.etherscan.io']
+              }]
+            });
+          } else {
+            throw switchError; // Re-throw other errors
+          }
+        }
+      }
+  
+      // Set the state
       setProvider(web3Provider);
       setSigner(web3Signer);
+      setAddress(userAddress);
       setError(null);
-
-      console.log('✅ Wallet connected:', userAddress);
       return true;
     } catch (err) {
-      console.error('❌ Wallet connection error:', err);
+      console.error('Wallet connection error:', err);
       setError(err instanceof Error ? err.message : 'Failed to connect wallet');
       return false;
     }
   }, []);
 
-  const switchToSepolia = async (provider: ethers.providers.Web3Provider) => {
-    try {
-      await window.ethereum.request({
-        method: 'wallet_switchEthereumChain',
-        params: [{ chainId: '0xaa36a7' }] // Sepolia chainId
-      });
-    } catch (error: any) {
-      if (error.code === 4902) {
-        await window.ethereum.request({
-          method: 'wallet_addEthereumChain',
-          params: [{
-            chainId: '0xaa36a7',
-            chainName: 'Sepolia',
-            nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
-            rpcUrls: [`https://eth-sepolia.g.alchemy.com/v2/${import.meta.env.VITE_ALCHEMY_API_KEY}`],
-            blockExplorerUrls: ['https://sepolia.etherscan.io']
-          }]
-        });
-      } else {
-        throw error;
-      }
-    }
-  };
-
   const disconnectWallet = useCallback(() => {
-    console.log('Disconnecting wallet');
     setAddress(null);
     setProvider(null);
     setSigner(null);
     setError(null);
   }, []);
+
+  // Listen for account changes
+  useEffect(() => {
+    if (window.ethereum) {
+      window.ethereum.on('accountsChanged', (accounts: string[]) => {
+        if (accounts.length === 0) {
+          disconnectWallet();
+        } else {
+          setAddress(accounts[0]);
+        }
+      });
+
+      window.ethereum.on('chainChanged', () => {
+        window.location.reload();
+      });
+    }
+
+    return () => {
+      if (window.ethereum) {
+        window.ethereum.removeListener('accountsChanged', () => {});
+        window.ethereum.removeListener('chainChanged', () => {});
+      }
+    };
+  }, [disconnectWallet]);
 
   return (
     <WalletContext.Provider value={{
