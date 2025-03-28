@@ -4,6 +4,7 @@ import LoadingScreen from './components/LoadingScreen';
 import NFTGenerator from './components/NFTGenerator';
 import { WalletProvider } from './context/WalletContext';
 
+// Shuffle Text Animation Component
 function ShuffleText({ text, delay = 0 }: { text: string; delay?: number }) {
   const [displayText, setDisplayText] = useState('');
   const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()';
@@ -64,7 +65,7 @@ function App() {
   if (currentPage === 'generator') {
     return (
       <WalletProvider>
-        <NFTGenerator />
+        <NFTGenerator onBack={() => setCurrentPage('home')} />
       </WalletProvider>
     );
   }
@@ -78,7 +79,7 @@ function App() {
         <nav className="flex justify-between items-center p-6">
           <div className="flex items-center space-x-2">
             <Hexagon className="text-[#ADFF2F]" size={24} />
-            <span className="text-xl font-mono tracking-wider">OPULENT NFTs</span>
+            <span className="text-xl font-mono tracking-wider">NFTCONNECT</span>
           </div>
           <div className="flex space-x-6">
             {['EXPLORE NFTS', 'CREATE NFT', 'MARKETPLACE', 'ABOUT US', 'SUPPORT'].map((item) => (
