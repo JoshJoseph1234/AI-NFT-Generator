@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Hexagon } from 'lucide-react';
 import LoadingScreen from './components/LoadingScreen';
 import NFTGenerator from './components/NFTGenerator';
+import { WalletProvider } from './context/WalletContext';
 
+// Shuffle Text Animation Component
 function ShuffleText({ text, delay = 0 }: { text: string; delay?: number }) {
   const [displayText, setDisplayText] = useState('');
   const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()';
@@ -61,7 +63,11 @@ function App() {
   }
 
   if (currentPage === 'generator') {
-    return <NFTGenerator />;
+    return (
+      <WalletProvider>
+        <NFTGenerator onBack={() => setCurrentPage('home')} />
+      </WalletProvider>
+    );
   }
 
   return (

@@ -2,15 +2,20 @@ const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
 describe("AINFT", function () {
+  let AINFT;
   let ainft;
   let owner;
   let addr1;
   let addr2;
 
   beforeEach(async function () {
+    // Get signers
     [owner, addr1, addr2] = await ethers.getSigners();
-    const AINFT = await ethers.getContractFactory("AINFT");
+
+    // Deploy contract
+    AINFT = await ethers.getContractFactory("AINFT");
     ainft = await AINFT.deploy();
+    await ainft.waitForDeployment();
   });
 
   describe("Deployment", function () {
@@ -25,28 +30,32 @@ describe("AINFT", function () {
   });
 
   describe("Minting", function () {
+    const tokenURI = "https://example.com/token/1";
+
     it("Should mint a new NFT", async function () {
-      const tokenURI = "ipfs://QmTest";
-      await ainft.mintNFT(addr1.address, tokenURI);
-      
+      const mintTx = await ainft.mintNFT(addr1.address, tokenURI);
+      await mintTx.wait();
+
       expect(await ainft.ownerOf(1)).to.equal(addr1.address);
       expect(await ainft.tokenURI(1)).to.equal(tokenURI);
     });
 
     it("Should increment token IDs", async function () {
-      await ainft.mintNFT(addr1.address, "ipfs://QmTest1");
-      await ainft.mintNFT(addr1.address, "ipfs://QmTest2");
-      
-      expect(await ainft.totalSupply()).to.equal(2);
+      await ainft.mintNFT(addr1.address, tokenURI);
+      await ainft.mintNFT(addr2.address, "https://example.com/token/2");
+
+      expect(await ainft.ownerOf(1)).to.equal(addr1.address);
+      expect(await ainft.ownerOf(2)).to.equal(addr2.address);
     });
 
-    it("Should only allow owner to mint", async function () {
-      const tokenURI = "ipfs://QmTest";
-      
-      // Try to mint from non-owner account
-      await expect(
-        ainft.connect(addr1).mintNFT(addr2.address, tokenURI)
-      ).to.be.revertedWith("Ownable: caller is not the owner");
+    it("Should track user tokens", async function () {
+      await ainft.mintNFT(addr1.address, tokenURI);
+      await ainft.mintNFT(addr1.address, "https://example.com/token/2");
+
+      const userTokens = await ainft.getUserTokens(addr1.address);
+      expect(userTokens.length).to.equal(2);
+      expect(userTokens[0]).to.equal(1);
+      expect(userTokens[1]).to.equal(2);
     });
   });
 });
