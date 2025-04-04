@@ -19,67 +19,41 @@ const NFTGenerator = () => {
 
   const monitorTransaction = async (tx: ethers.providers.TransactionResponse) => {
     console.log('Monitoring transaction:', tx.hash);
-    
     const receipt = await tx.wait(2);
     console.log('Events:', receipt.events?.map(e => ({
       event: e.event,
       args: e.args
     })));
-    
     return receipt;
   };
 
-  // Debug: Log wallet state changes
-  useEffect(() => {
-    console.log('Wallet State Changed:', {
-      isConnected: !!address,
-      address,
-      error: walletError
-    });
-  }, [address, walletError]);
-
-  // Add debug logging
+  // Debug logging for state changes
   useEffect(() => {
     console.log('Component State:', {
-      isWalletConnected: !!address,
+      isConnected: !!address,
       walletAddress: address,
+      walletError,
       hasProvider: !!provider,
       hasSigner: !!signer,
       hasGeneratedImage: !!generatedImage,
       hasMetadataUrl: !!metadataUrl
     });
-  }, [address, provider, signer, generatedImage, metadataUrl]);
+  }, [address, walletError, provider, signer, generatedImage, metadataUrl]);
 
+  // Handle network and account changes
   useEffect(() => {
-    const checkWalletConnection = async () => {
-      if (typeof window.ethereum !== 'undefined') {
-        const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-        console.log('Current accounts:', accounts);
-        
-        if (accounts.length > 0) {
-          const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-          console.log('Current network:', parseInt(chainId, 16));
-          
-          if (parseInt(chainId, 16) !== 11155111) {
-            setError('Please switch to Sepolia network');
-          }
-        }
-      }
-    };
+    const handleChainChanged = () => window.location.reload();
+    const handleAccountsChanged = () => window.location.reload();
 
-    checkWalletConnection();
-  }, []);
-
-  useEffect(() => {
     if (window.ethereum) {
-      window.ethereum.on('chainChanged', () => window.location.reload());
-      window.ethereum.on('accountsChanged', () => window.location.reload());
+      window.ethereum.on('chainChanged', handleChainChanged);
+      window.ethereum.on('accountsChanged', handleAccountsChanged);
     }
 
     return () => {
       if (window.ethereum) {
-        window.ethereum.removeListener('chainChanged', () => {});
-        window.ethereum.removeListener('accountsChanged', () => {});
+        window.ethereum.removeListener('chainChanged', handleChainChanged);
+        window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
       }
     };
   }, []);
@@ -92,9 +66,34 @@ const NFTGenerator = () => {
     if (savedMetadata) setMetadataUrl(savedMetadata);
   }, []);
 
+  const saveToLocalStorage = (image: string, metadata: string) => {
+    localStorage.setItem('generatedImage', image);
+    localStorage.setItem('metadataUrl', metadata);
+  };
+
+  const clearLocalStorage = () => {
+    localStorage.removeItem('generatedImage');
+    localStorage.removeItem('metadataUrl');
+  };
+
+  const handleError = (err: Error) => {
+    if (err.message.includes('cannot estimate gas')) {
+      return 'Gas estimation failed';
+    } else if (err.message.includes('user rejected')) {
+      return 'Transaction was rejected by user';
+    } else if (err.message.includes('insufficient funds')) {
+      return 'Insufficient funds for gas';
+    }
+    return `Minting failed: ${err.message}`;
+  };
+
   const handleGenerate = async () => {
+    if (!address) {
+      setError('Please connect your wallet first');
+      return;
+    }
     if (!prompt) return;
-    
+
     setIsGenerating(true);
     setGenerationProgress(0);
     setError(null);
@@ -102,23 +101,16 @@ const NFTGenerator = () => {
     setMetadataUrl(null);
 
     try {
-      // Start progress simulation
       const progressInterval = setInterval(() => {
         setGenerationProgress(prev => Math.min(prev + 2, 95));
       }, 1000);
 
       const response = await generateImage(prompt);
-      
-      // Complete progress
       clearInterval(progressInterval);
       setGenerationProgress(100);
-      
       setGeneratedImage(response.ipfs.imageUrl);
       setMetadataUrl(response.ipfs.metadataUrl);
-
-      // Save to localStorage
-      localStorage.setItem('generatedImage', response.ipfs.imageUrl);
-      localStorage.setItem('metadataUrl', response.ipfs.metadataUrl);
+      saveToLocalStorage(response.ipfs.imageUrl, response.ipfs.metadataUrl);
     } catch (err) {
       console.error('Error generating image:', err);
       setError(err instanceof Error ? err.message : 'Failed to generate NFT');
@@ -128,6 +120,10 @@ const NFTGenerator = () => {
   };
 
   const handleMint = async () => {
+    if (!address) {
+      setError('Please connect your wallet first');
+      return;
+    }
     if (!metadataUrl || !signer || !address) {
       setError('Please connect wallet and generate image first');
       return;
@@ -144,32 +140,24 @@ const NFTGenerator = () => {
       });
 
       const contract = getContract(signer);
-      
-      // Get current gas price
       const gasPrice = await signer.getGasPrice();
       console.log('Current gas price:', ethers.utils.formatUnits(gasPrice, 'gwei'), 'gwei');
 
-      // Estimate gas with higher limit
       const gasEstimate = await contract.estimateGas.mintNFT(address, metadataUrl);
       console.log('Estimated gas:', gasEstimate.toString());
 
-      // Send transaction with specific gas settings
       const tx = await contract.mintNFT(address, metadataUrl, {
-        gasLimit: gasEstimate.mul(120).div(100), // 20% buffer
-        gasPrice: gasPrice.mul(120).div(100) // 20% higher gas price
+        gasLimit: gasEstimate.mul(120).div(100),
+        gasPrice: gasPrice.mul(120).div(100)
       });
 
       console.log('Transaction sent:', tx.hash);
-      
-      // Wait for more confirmations
-      const receipt = await tx.wait(2); // Wait for 2 confirmations
-      console.log('Transaction receipt:', receipt);
+      const receipt = await tx.wait(2);
 
-      // Look for both NFTMinted and Transfer events
       const mintEvent = receipt.events?.find(e => e.event === 'NFTMinted');
       const transferEvent = receipt.events?.find(e => e.event === 'Transfer');
-
       let tokenId;
+
       if (mintEvent && mintEvent.args) {
         tokenId = mintEvent.args.tokenId.toString();
       } else if (transferEvent && transferEvent.args) {
@@ -180,68 +168,13 @@ const NFTGenerator = () => {
 
       console.log('NFT minted successfully! Token ID:', tokenId);
       alert(`NFT minted successfully! Token ID: ${tokenId}`);
-
-      // Clear stored data
-      localStorage.removeItem('generatedImage');
-      localStorage.removeItem('metadataUrl');
-      
-      // Reset states
+      clearLocalStorage();
       setGeneratedImage(null);
       setMetadataUrl(null);
       setPrompt('');
-
     } catch (err) {
       console.error('Minting error:', err);
-      if (err instanceof Error) {
-        if (err.message.includes('cannot estimate gas')) {
-          // Retry with higher gas limit
-          try {
-            console.log('Retrying with fixed gas limit...');
-            const gasPrice = await signer.getGasPrice();
-            const tx = await contract.mintNFT(address, metadataUrl, {
-              gasLimit: 500000, // Fixed high gas limit
-              gasPrice: gasPrice.mul(120).div(100)
-            });
-            console.log('Retry transaction sent:', tx.hash);
-            const receipt = await monitorTransaction(tx);
-            
-            // Process events
-            const mintEvent = receipt.events?.find(e => e.event === 'NFTMinted');
-            const transferEvent = receipt.events?.find(e => e.event === 'Transfer');
-            
-            let tokenId;
-            if (mintEvent && mintEvent.args) {
-              tokenId = mintEvent.args.tokenId.toString();
-            } else if (transferEvent && transferEvent.args) {
-              tokenId = transferEvent.args.tokenId.toString();
-            } else {
-              throw new Error('No minting events found in retry transaction');
-            }
-
-            console.log('NFT minted successfully on retry! Token ID:', tokenId);
-            alert(`NFT minted successfully! Token ID: ${tokenId}`);
-
-            // Clear stored data
-            localStorage.removeItem('generatedImage');
-            localStorage.removeItem('metadataUrl');
-            setGeneratedImage(null);
-            setMetadataUrl(null);
-            setPrompt('');
-            
-          } catch (retryErr) {
-            console.error('Retry failed:', retryErr);
-            setError('Minting failed even with higher gas limit');
-          }
-        } else if (err.message.includes('user rejected')) {
-          setError('Transaction was rejected by user');
-        } else if (err.message.includes('insufficient funds')) {
-          setError('Insufficient funds for gas');
-        } else {
-          setError(`Minting failed: ${err.message}`);
-        }
-      } else {
-        setError('Unknown error occurred while minting');
-      }
+      setError(handleError(err as Error));
     } finally {
       setIsMinting(false);
     }
@@ -252,17 +185,13 @@ const NFTGenerator = () => {
     try {
       const success = await connectWallet();
       console.log('🔌 Wallet connection result:', success);
-      
       if (!success) {
         setLocalError('Failed to connect wallet');
         return;
       }
-      
-      // Verify connection
       if (!window.ethereum.selectedAddress) {
         throw new Error('No wallet address found after connection');
       }
-      
       console.log('✅ Wallet connected:', window.ethereum.selectedAddress);
     } catch (err) {
       console.error('❌ Connection error:', err);
@@ -280,129 +209,116 @@ const NFTGenerator = () => {
 
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-white relative">
+      {/* Background Patterns */}
       <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9IiMxMTExMTEiLz48L3N2Zz4=')] opacity-20"></div>
       <div className="absolute inset-0 border border-[#1A1A1A] m-4 pointer-events-none"></div>
 
+      {/* Navigation Bar */}
       <nav className="relative flex justify-between items-center p-6">
         <div className="flex items-center space-x-2">
           <Hexagon className="text-[#ADFF2F]" size={24} />
           <span className="text-xl font-mono tracking-wider">OPULENT NFTs</span>
         </div>
-        <button 
-          onClick={handleBackClick}
-          className="flex items-center space-x-2 px-4 py-2 text-sm font-mono bg-[#ADFF2F]/10 hover:bg-[#ADFF2F]/20 text-[#ADFF2F] rounded transition-colors"
-        >
-          <ArrowLeft size={16} />
-          <span>BACK TO HOME</span>
-        </button>
-      </nav>
-
-      <div className="max-w-4xl mx-auto px-6 py-12">
-        {!address ? (
-          // Wallet Connection Screen
-          <div className="text-center py-12">
-            <h2 className="text-2xl font-light text-[#ADFF2F] mb-6">Connect Your Wallet to Start</h2>
+        <div className="flex items-center space-x-4">
+          {!address ? (
             <button
               onClick={handleConnectWallet}
-              className="px-8 py-3 bg-[#ADFF2F] hover:bg-[#9AE62F] text-black rounded-lg font-mono flex items-center space-x-2 mx-auto transition-colors"
+              className="px-4 py-2 bg-[#ADFF2F]/10 hover:bg-[#ADFF2F]/20 text-[#ADFF2F] rounded-lg font-mono flex items-center space-x-2 transition-colors"
             >
-              <Wallet size={20} />
-              <span>CONNECT METAMASK</span>
+              <Wallet size={16} />
+              <span>CONNECT WALLET</span>
             </button>
-            {localError && (
-              <div className="mt-4 p-4 bg-red-500/20 text-red-400 rounded-lg">
-                {localError}
-              </div>
-            )}
+          ) : (
+            <>
+              <span className="font-mono text-sm">{`${address.slice(0, 6)}...${address.slice(-4)}`}</span>
+              <button
+                onClick={disconnectWallet}
+                className="px-4 py-2 bg-red-500/20 text-red-400 rounded-lg font-mono flex items-center space-x-2"
+              >
+                <LogOut size={16} />
+                <span>DISCONNECT</span>
+              </button>
+            </>
+          )}
+          <button
+            onClick={handleBackClick}
+            className="flex items-center space-x-2 px-4 py-2 text-sm font-mono bg-[#ADFF2F]/10 hover:bg-[#ADFF2F]/20 text-[#ADFF2F] rounded transition-colors"
+          >
+            <ArrowLeft size={16} />
+            <span>BACK TO HOME</span>
+          </button>
+        </div>
+      </nav>
+
+      {/* Main Content */}
+      <div className="max-w-4xl mx-auto px-6 py-12">
+        {/* Explanation Message for Wallet Connection */}
+        {!address && (
+          <div className="mb-8 p-4 bg-[#ADFF2F]/10 border border-[#ADFF2F]/30 rounded-lg text-center">
+            Please connect your wallet to proceed with generating and minting NFTs.
           </div>
-        ) : (
-          // NFT Generation Interface
-          <>
-            <div className="flex justify-between items-center mb-8">
-              <h1 className="text-4xl font-light text-[#ADFF2F]">Create Your NFT</h1>
-              <div className="flex items-center space-x-4">
-                <span className="font-mono text-sm">
-                  {`${address.slice(0, 6)}...${address.slice(-4)}`}
-                </span>
+        )}
+
+        {/* NFT Generation Interface */}
+        <div className="bg-black/40 backdrop-blur-sm border border-[#ADFF2F]/30 p-8 rounded-lg">
+          <div className="mb-6">
+            <label className="block text-sm font-mono text-gray-400 mb-2">
+              DESCRIBE YOUR NFT
+            </label>
+            <textarea
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              className="w-full h-32 bg-black/40 text-white border border-[#ADFF2F]/30 rounded-lg p-4 focus:outline-none focus:border-[#ADFF2F] transition-colors resize-none"
+              placeholder="Enter a detailed description of the NFT you want to generate..."
+            />
+          </div>
+          {error && (
+            <div className="mb-6 p-4 bg-red-500/20 border border-red-500/50 rounded-lg text-red-400 text-sm">
+              {error}
+            </div>
+          )}
+          {generatedImage && (
+            <div className="mb-6">
+              <div className="relative aspect-[3/2] rounded-lg overflow-hidden">
+                <img
+                  src={generatedImage}
+                  alt="Generated NFT"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="mt-4 flex gap-4">
                 <button
-                  onClick={disconnectWallet}
-                  className="px-4 py-2 bg-red-500/20 text-red-400 rounded-lg font-mono flex items-center space-x-2"
+                  onClick={handleMint}
+                  disabled={!address || isMinting || !metadataUrl}
+                  title={!address ? 'Please connect your wallet first' : undefined}
+                  className={`flex-1 py-4 rounded-lg font-mono flex items-center justify-center space-x-2 transition-all ${
+                    !address || isMinting || !metadataUrl
+                      ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                      : 'bg-[#ADFF2F] text-black hover:bg-[#9AE62F]'
+                  }`}
                 >
-                  <LogOut size={16} />
-                  <span>DISCONNECT</span>
+                  <Wallet size={20} />
+                  <span>{isMinting ? 'MINTING...' : 'MINT NFT'}</span>
                 </button>
               </div>
             </div>
+          )}
+          <button
+            onClick={handleGenerate}
+            disabled={!address || !prompt || isGenerating}
+            title={!address ? 'Please connect your wallet first' : undefined}
+            className={`w-full py-4 rounded-lg font-mono flex items-center justify-center space-x-2 transition-all ${
+              !address || !prompt || isGenerating
+                ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                : 'bg-[#ADFF2F] text-black hover:bg-[#9AE62F]'
+            }`}
+          >
+            <Wand2 size={20} />
+            <span>{isGenerating ? 'GENERATING...' : 'GENERATE IMAGE'}</span>
+          </button>
+        </div>
 
-            <div className="bg-black/40 backdrop-blur-sm border border-[#ADFF2F]/30 p-8 rounded-lg">
-              <div className="mb-6">
-                <label className="block text-sm font-mono text-gray-400 mb-2">
-                  DESCRIBE YOUR NFT
-                </label>
-                <textarea
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  className="w-full h-32 bg-black/40 text-white border border-[#ADFF2F]/30 rounded-lg p-4 focus:outline-none focus:border-[#ADFF2F] transition-colors resize-none"
-                  placeholder="Enter a detailed description of the NFT you want to generate..."
-                />
-              </div>
-
-              {error && (
-                <div className="mb-6 p-4 bg-red-500/20 border border-red-500/50 rounded-lg text-red-400 text-sm">
-                  {error}
-                </div>
-              )}
-
-              {generatedImage && (
-                <div className="mb-6">
-                  <div className="relative aspect-[3/2] rounded-lg overflow-hidden">
-                    <img 
-                      src={generatedImage} 
-                      alt="Generated NFT"
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  
-                  <div className="mt-4 flex gap-4">
-                    <button
-                      onClick={handleMint}
-                      disabled={isMinting || !metadataUrl}
-                      className={`flex-1 py-4 rounded-lg font-mono flex items-center justify-center space-x-2 transition-all ${
-                        isMinting || !metadataUrl
-                          ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
-                          : 'bg-[#ADFF2F] text-black hover:bg-[#9AE62F]'
-                      }`}
-                    >
-                      <Wallet size={20} />
-                      <span>{isMinting ? 'MINTING...' : 'MINT NFT'}</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              <button
-                onClick={handleGenerate}
-                disabled={!prompt || isGenerating}
-                className={`w-full py-4 rounded-lg font-mono flex items-center justify-center space-x-2 transition-all ${
-                  !prompt || isGenerating
-                    ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
-                    : 'bg-[#ADFF2F] text-black hover:bg-[#9AE62F]'
-                }`}
-              >
-                <Wand2 size={20} />
-                <span>{isGenerating ? 'GENERATING...' : 'GENERATE IMAGE'}</span>
-              </button>
-            </div>
-
-            {(localError || walletError) && (
-              <div className="mt-4 p-4 bg-red-500/20 text-red-400 rounded-lg">
-                {localError || walletError}
-              </div>
-            )}
-          </>
-        )}
-
-        {/* Show user's NFTs only when wallet is connected */}
+        {/* Display User's NFTs */}
         {address && provider && (
           <div className="mt-12">
             <h2 className="text-2xl font-light mb-6 text-[#ADFF2F]">Your NFTs</h2>
