@@ -1,66 +1,254 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&family=Inter:wght@300;400;500;600&family=Roboto+Mono:wght@400;500&family=Space+Grotesk:wght@300;400;500;600&display=swap');
+
+/* Base Styles */
 @tailwind base;
-@tailwind components;
-@tailwind utilities;
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+  }
   body {
-    @apply antialiased bg-[#0A0A0A];
+    @apply antialiased bg-[#0A0A0A] text-white overflow-x-hidden;
+  }
+  h1, h2, h3 {
+    @apply font-['Poppins'] font-bold tracking-wide;
+  }
+  h4, h5, h6 {
+    @apply font-['Space_Grotesk'] font-medium tracking-wide;
+  }
+  p {
+    @apply font-['Inter'] leading-relaxed;
+  }
+  button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible {
+    @apply outline-none ring-2 ring-[#ADFF2F] ring-offset-2 ring-offset-black;
   }
 }
 
-@layer utilities {
-  .animate-spin-slow {
-    animation: spin 10s linear infinite;
+/* Components */
+@tailwind components;
+
+@layer components {
+  /* Glassmorphism - Improved for better readability */
+  .glassmorphism-card {
+    @apply backdrop-blur-md bg-black/40 border border-white/10 shadow-xl;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5), inset 0 0 1px rgba(255, 255, 255, 0.2);
   }
+
+  /* Text effects */
+  .text-outline {
+    -webkit-text-stroke: 1px rgba(173, 255, 47, 0.5);
+    color: transparent;
+  }
+
+  /* Enhanced glowing effect */
+  .shadow-neon {
+    box-shadow: 0 0 15px 2px rgba(173, 255, 47, 0.3),
+                0 0 30px rgba(173, 255, 47, 0.15);
+  }
+
+  /* Perspective container for 3D effects */
+  .perspective-1000 {
+    perspective: 1000px;
+  }
+
+  /* Grid pattern background */
+  .bg-grid-pattern {
+    background-image: 
+      linear-gradient(to right, rgba(173, 255, 47, 0.05) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(173, 255, 47, 0.05) 1px, transparent 1px);
+    background-size: 30px 30px;
+  }
+
+  /* Hexagonal grid pattern for backgrounds */
+  .hexagon-grid {
+    background-size: 30px 30px;
+    background-image: repeating-linear-gradient(0deg, rgba(173, 255, 47, 0.03), rgba(173, 255, 47, 0.03) 1px, transparent 1px, transparent 30px),
+                      repeating-linear-gradient(60deg, rgba(173, 255, 47, 0.03), rgba(173, 255, 47, 0.03) 1px, transparent 1px, transparent 30px),
+                      repeating-linear-gradient(120deg, rgba(173, 255, 47, 0.03), rgba(173, 255, 47, 0.03) 1px, transparent 1px, transparent 30px);
+  }
+
+  /* Form inputs with dark futuristic style */
+  .cyber-input {
+    @apply bg-black/60 border border-[#ADFF2F]/20 text-gray-200 py-3 px-4 rounded-md 
+    focus:border-[#ADFF2F]/50 focus:ring-1 focus:ring-[#ADFF2F]/30 focus:outline-none 
+    transition-all font-mono;
+  }
+
+  /* Enhanced Carousel Styles */
+  .nft-carousel {
+    @apply relative overflow-hidden;
+    mask-image: linear-gradient(
+      to right,
+      transparent 0%,
+      black 10%,
+      black 90%,
+      transparent 100%
+    );
+  }
+
+  /* Improve performance with hardware acceleration */
+  .nft-carousel * {
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+  }
+}
+
+/* Utilities */
+@tailwind utilities;
+
+@layer utilities {
+  /* Enhanced Floating Animations */
   .animate-float {
     animation: float 6s ease-in-out infinite;
   }
+
   .animate-float-delayed-1 {
     animation: float 6s ease-in-out infinite;
-    animation-delay: -2s;
+    animation-delay: 1s;
   }
+
   .animate-float-delayed-2 {
     animation: float 6s ease-in-out infinite;
-    animation-delay: -4s;
-  }
-  .animate-fade-in {
-    animation: fadeIn 1.5s ease-out forwards;
     animation-delay: 2s;
   }
+
+  /* Pulse Glow Effect */
+  .pulse-glow {
+    animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  /* Scanline Effect */
+  .scanline-effect {
+    background: linear-gradient(to bottom, transparent, rgba(173, 255, 47, 0.2), transparent);
+    height: 10px;
+    width: 100%;
+    animation: scanline 3s linear infinite;
+  }
+
+  /* Text effects */
+  .gradient-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-[#ADFF2F] to-white;
+  }
+
+  /* Terminal blinking cursor */
+  .cursor-blink::after {
+    content: '|';
+    animation: blink 1s step-end infinite;
+  }
+
+  /* Add smooth scroll effect */
+  @keyframes smoothScroll {
+    0% {
+      transform: translateX(0) translateZ(0);
+    }
+    100% {
+      transform: translateX(-100%) translateZ(0);
+    }
+  }
+
+  .smooth-scroll {
+    animation: smoothScroll 20s linear infinite;
+  }
 }
 
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
+/* Improved Animation Keyframes */
 @keyframes float {
   0%, 100% {
-    transform: translateY(0) rotate(var(--tw-rotate, 0));
+    transform: translateY(0) rotate(var(--rotate, 0deg));
+    filter: brightness(1);
   }
   50% {
-    transform: translateY(-20px) rotate(var(--tw-rotate, 0));
+    transform: translateY(var(--distance, -8px)) rotate(var(--rotate, 0deg));
+    filter: brightness(1.1);
   }
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
+@keyframes pulse {
+  0%, 100% {
+    filter: brightness(1);
+    opacity: 0.8;
   }
-  to {
+  50% {
+    filter: brightness(1.3);
     opacity: 1;
-    transform: translateY(0);
   }
+}
+
+@keyframes scanline {
+  0% {
+    transform: translateY(-100vh);
+  }
+  100% {
+    transform: translateY(100vh);
+  }
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* NFT Card Styles */
+.nft-card {
+  @apply relative cursor-pointer;
+  transform-style: preserve-3d;
+  transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.nft-card:hover {
+  transform: scale(1.05) translateY(-5px);
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.5), 0 0 15px rgba(173, 255, 47, 0.3);
+}
+
+.nft-card::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    rgba(173, 255, 47, 0.8),
+    rgba(255, 255, 255, 0.4) 20%,
+    transparent 40%,
+    transparent 60%,
+    rgba(173, 255, 47, 0.4) 80%,
+    rgba(173, 255, 47, 0.8)
+  );
+  -webkit-mask: linear-gradient(black, black) content-box, linear-gradient(black, black);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+.nft-card::before {
+  content: '';
+  @apply absolute inset-0 rounded-xl opacity-0;
+  background: linear-gradient(
+    135deg,
+    rgba(173, 255, 47, 0.3) 0%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(173, 255, 47, 0.3) 100%
+  );
+  transition: opacity 0.5s ease;
+}
+
+.nft-card:hover::after {
+  opacity: 1;
+  animation: border-flow 4s linear infinite;
+}
+
+.nft-card:hover::before {
+  @apply opacity-100;
 }
 
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -69,8 +257,79 @@
 
 ::-webkit-scrollbar-thumb {
   @apply bg-[#ADFF2F]/20 rounded-full;
+  transition: background-color 0.3s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-[#ADFF2F]/30;
+  @apply bg-[#ADFF2F]/40;
+}
+
+/* SVG Noise Filter */
+.noise-svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* Tooltip Styles */
+.tooltip {
+  @apply relative inline-block;
+}
+
+.tooltip .tooltip-text {
+  @apply invisible absolute z-10 p-2 text-xs rounded bg-black/90 text-white whitespace-nowrap;
+  bottom: 125%;
+  left: 50%;
+  transform: translateX(-50%);
+  transition: opacity 0.3s;
+}
+
+.tooltip:hover .tooltip-text {
+  @apply visible opacity-100;
+}
+
+/* Enhanced focus states for accessibility */
+a:focus, button:focus, input:focus, select:focus, textarea:focus {
+  @apply outline-none ring-2 ring-[#ADFF2F] ring-offset-1 ring-offset-black;
+}
+
+/* Added media queries for better responsiveness */
+@media (max-width: 640px) {
+  h1 {
+    @apply text-3xl;
+  }
+  h2 {
+    @apply text-2xl;
+  }
+  .glassmorphism-card {
+    @apply backdrop-blur-sm bg-black/50;
+  }
+}
+
+/* Mobile Responsive Adjustments */
+@media (max-width: 768px) {
+  .nft-card {
+    width: 260px;
+    height: 340px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .max-container {
+    max-width: 1280px;
+  }
+}
+
+/* Additional keyframes */
+@keyframes border-flow {
+  0% {
+    background-position: 0% 0%;
+    filter: hue-rotate(0deg);
+  }
+  50% {
+    filter: hue-rotate(15deg);
+  }
+  100% {
+    background-position: 200% 200%;
+    filter: hue-rotate(0deg);
+  }
 }
