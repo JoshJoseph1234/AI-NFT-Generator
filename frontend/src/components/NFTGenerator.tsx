@@ -1,13 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Wand2, Wallet, LogOut, AlertCircle, Eye } from 'lucide-react';
-import { motion } from 'framer-motion';
 import { generateImage } from '../api/generate';
-import { getContract, CONTRACT_ADDRESS } from '../config/contract';
+import { getContract } from '../config/contract';
 import { useWallet } from '../context/WalletContext';
 import UserNFTs from './UserNFTs';
 import { ethers } from 'ethers';
 import ParticleField from './ParticleField';
-import PageTransition from './PageTransition';
 
 const NFTGenerator = ({ onBack }) => {
   const { address, provider, signer, connectWallet, disconnectWallet, error: walletError } = useWallet();

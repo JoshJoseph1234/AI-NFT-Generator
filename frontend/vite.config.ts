@@ -7,7 +7,7 @@ export default defineConfig({
     react(),
     nodePolyfills({
       include: ['buffer', 'process']
-    })
+    }),
   ],
   optimizeDeps: {
     exclude: ['lucide-react'],

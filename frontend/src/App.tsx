@@ -3,14 +3,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight } from 'lucide-react';
 import NFTGenerator from './components/NFTGenerator';
 import { WalletProvider } from './context/WalletContext';
-import { useWallet } from './context/WalletContext';
 import LearnMore from './components/LearnMore';
 import ParticleField from './components/ParticleField';
 import NavBar from './components/NavBar';
 import PageTransition from './components/PageTransition';
+import ComingSoon from './components/ComingSoon';
 
 // Shuffle Text Animation Component with improved performance
-function ShuffleText({ text, delay = 0 }) {
+function ShuffleText({ text, delay = 0 }: { text: string; delay?: number }) {
   const [displayText, setDisplayText] = useState('');
   const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()';
   const shuffleCount = 8; // Reduced for better performance
@@ -19,7 +19,7 @@ function ShuffleText({ text, delay = 0 }) {
   useEffect(() => {
     let currentIndex = 0;
     let shufflesRemaining = shuffleCount;
-    let intervalId;
+    let intervalId: string | number | NodeJS.Timeout | undefined;
     
     const timeout = setTimeout(() => {
       intervalId = setInterval(() => {
@@ -27,7 +27,7 @@ function ShuffleText({ text, delay = 0 }) {
           setDisplayText(
             text
               .split('')
-              .map((char, i) =>
+              .map((char: string, i: number) =>
                 i < currentIndex || char === ' '
                   ? char
                   : characters[Math.floor(Math.random() * characters.length)]
@@ -56,10 +56,11 @@ function ShuffleText({ text, delay = 0 }) {
 }
 
 function App() {
-  const { connectWallet } = useWallet();
   const [currentPage, setCurrentPage] = useState('home');
   const [scrolled, setScrolled] = useState(false);
   const [activeSection, setActiveSection] = useState('hero');
+  const [transitionDirection, setTransitionDirection] = useState('left');
+  const [previousPage, setPreviousPage] = useState('home');
   
   // NFT Images
   const nftImages = [
@@ -94,16 +95,22 @@ function App() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const handleGetStarted = () => {
-    setCurrentPage('generator');
+  // Helper function to handle navigation with proper transitions
+  const navigateTo = (page: string) => {
+    setPreviousPage(currentPage);
+    
+    // Determine transition direction based on navigation flow
+    if (page === 'home') {
+      setTransitionDirection('left');
+    } else {
+      setTransitionDirection('right');
+    }
+    
+    setCurrentPage(page);
   };
 
-  const handleConnectWallet = async () => {
-    try {
-      await connectWallet();
-    } catch (err) {
-      console.error('Failed to connect wallet:', err);
-    }
+  const handleGetStarted = () => {
+    navigateTo('generator');
   };
 
   return (
@@ -115,23 +122,39 @@ function App() {
             currentPage={currentPage}
             activeSection={activeSection}
             onNavigate={(page) => {
-              setCurrentPage(page);
+              navigateTo(page);
             }}
             scrolled={scrolled}
+
+            onBack={() => {
+              setActiveSection('hero'); // Reset section when going back
+              navigateTo('home');
+            }}
           />
         )}
+        
         {currentPage === 'generator' ? (
-          <PageTransition type="slide" direction="right">
+          <PageTransition type="slide" direction={transitionDirection}>
             <WalletProvider>
-              <NFTGenerator onBack={() => setCurrentPage('home')} />
+              <NFTGenerator onBack={() => {
+                setActiveSection('hero'); // Reset section when going back
+                navigateTo('home');
+              }} />
             </WalletProvider>
           </PageTransition>
         ) : currentPage === 'learn' ? (
-          <PageTransition type="slide" direction="right">
-            <LearnMore onBack={() => setCurrentPage('home')} />
+          <PageTransition type="slide" direction={transitionDirection}>
+            <LearnMore onBack={() => navigateTo('home')} />
+          </PageTransition>
+        ) : currentPage === 'coming-soon' ? (
+          <PageTransition type="slide" direction={transitionDirection}>
+            <ComingSoon 
+              onBack={() => navigateTo('home')} 
+              currentPage={currentPage}
+            />
           </PageTransition>
         ) : (
-          <PageTransition type="fade">
+          <PageTransition type="slide" direction={transitionDirection}>
             <WalletProvider>
               <div className="min-h-screen bg-black text-white relative overflow-hidden font-mono">
                 {/* Background Effects */}
@@ -186,7 +209,7 @@ function App() {
                           >
                             <span className="relative z-10 flex items-center justify-center">
                               GET STARTED
-                              <ChevronRight size={16} className="ml-1 group-hover:translate-x-1 transition-transform" />
+                              <ChevronRight size={16} className="ml-1 group-hover:translate-x-1" />
                             </span>
                             <span className="absolute inset-0 bg-white/20 transform translate-y-full group-hover:translate-y-0 transition-transform duration-300"></span>
                           </motion.button>
@@ -195,7 +218,7 @@ function App() {
                                       font-medium rounded-lg hover:bg-green-400/10 transition-all duration-300"
                             whileHover={{ scale: 1.03 }}
                             whileTap={{ scale: 0.95 }}
-                            onClick={() => setCurrentPage('learn')}
+                            onClick={() => navigateTo('learn')}
                           >
                             <span className="relative z-10 flex items-center">
                               LEARN MORE

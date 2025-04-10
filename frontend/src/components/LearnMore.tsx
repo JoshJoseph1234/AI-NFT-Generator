@@ -93,8 +93,7 @@ function LearnMore({ onBack }) {
         onSectionChange={handleSectionChange}
       />
 
-      {/* Content */}
-      <div className="relative z-10 container mx-auto px-4 pt-32">
+      <div className="relative z-10 container mx-auto px-4 pt-[120px]">
         <div className="max-w-4xl mx-auto">
           <motion.h1
             className="text-4xl md:text-5xl font-gantari font-bold mb-8 bg-clip-text text-transparent bg-gradient-to-r from-green-500 to-green-300"
@@ -160,8 +159,8 @@ function LearnMore({ onBack }) {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
               {[
                 "React.js", "TypeScript", "Framer Motion", "TailwindCSS",
-                "Web3.js", "Smart Contracts", "IPFS", "AI Models"
-              ].map((tech, index) => (
+                "Web3.js", "Smart Contracts", "IPFS", "Stable Diffusion"
+              ].map((tech) => (
                 <motion.div
                   key={tech}
                   className="px-4 py-3 rounded-lg bg-black/60 border border-green-400/10 text-center"
@@ -172,7 +171,7 @@ function LearnMore({ onBack }) {
                   }}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4, delay: 1 + index * 0.1 }}
+                  transition={{ duration: 0.4, delay: 0.1 }}
                 >
                   <span className="text-gray-200 font-mono text-xs tracking-wider">{tech}</span>
                 </motion.div>

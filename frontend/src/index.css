@@ -21,7 +21,7 @@
     @apply font-['Inter'] leading-relaxed;
   }
   button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible {
-    @apply outline-none ring-2 ring-[#ADFF2F] ring-offset-2 ring-offset-black;
+    @apply outline-none ring-2 ring-green-400 ring-offset-2 ring-offset-black;
   }
 }
 
@@ -348,7 +348,7 @@ button:focus:not(.nav-button),
 input:focus, 
 select:focus, 
 textarea:focus {
-  @apply outline-none ring-2 ring-[#ADFF2F] ring-offset-1 ring-offset-black;
+  @apply outline-none ring-2 ring-green-400 ring-offset-1 ring-offset-black;
 }
 
 /* Add this new class */

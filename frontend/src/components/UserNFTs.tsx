@@ -27,7 +27,8 @@ const UserNFTs = ({ userAddress, provider }: { userAddress: string, provider: et
       setIsLoading(true);
       setError(null);
 
-      const contract = getContract(provider);
+      const signer = provider.getSigner();
+      const contract = getContract(signer);
       const tokenIds = await contract.getUserTokens(userAddress);
       
       const nftPromises = tokenIds.map(async (tokenId: number) => {
