@@ -18,7 +18,12 @@
   },
   "homepage": "https://github.com/JoshJoseph1234/AI-NFT-Generator#readme",
   "devDependencies": {
+    "@types/dotenv": "^6.1.1",
     "@types/jest": "^29.5.14",
     "@types/testing-library__jest-dom": "^5.14.9"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "vite-plugin-csp": "^1.1.2"
   }
 }

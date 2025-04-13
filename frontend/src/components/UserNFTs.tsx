@@ -20,6 +20,34 @@ const UserNFTs = ({ userAddress, provider }: { userAddress: string, provider: et
     loadUserNFTs();
   }, [userAddress]);
 
+  const fetchMetadata = async (uri: string) => {
+    try {
+      // Convert IPFS URI to use our proxy
+      const proxyUri = uri.replace('https://gateway.pinata.cloud/ipfs/', '/ipfs/');
+      const response = await fetch(proxyUri, {
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      // Convert image URL to use proxy as well
+      if (data.image) {
+        data.image = data.image.replace('https://gateway.pinata.cloud/ipfs/', '/ipfs/');
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Error fetching metadata:', error);
+      throw error;
+    }
+  };
+
   const loadUserNFTs = async () => {
     if (!userAddress || !provider) return;
 
@@ -27,36 +55,27 @@ const UserNFTs = ({ userAddress, provider }: { userAddress: string, provider: et
       setIsLoading(true);
       setError(null);
 
-      const contract = getContract(provider);
+      const signer = provider.getSigner();
+      const contract = getContract(signer);
       const tokenIds = await contract.getUserTokens(userAddress);
       
       const nftPromises = tokenIds.map(async (tokenId: number) => {
-        try {
-          const tokenURI = await contract.tokenURI(tokenId);
-          const metadata = await fetch(tokenURI).then(res => res.json());
-          
-          return {
-            tokenId: tokenId.toString(),
-            imageUrl: metadata.image,
-            name: metadata.name || `NFT #${tokenId}`,
-            description: metadata.description || 'No description available'
-          };
-        } catch (err) {
-          console.error(`Error loading NFT #${tokenId}:`, err);
-          return {
-            tokenId: tokenId.toString(),
-            imageUrl: '',
-            name: `NFT #${tokenId}`,
-            description: 'Failed to load metadata'
-          };
-        }
+        const tokenURI = await contract.tokenURI(tokenId);
+        const metadata = await fetchMetadata(tokenURI);
+        
+        return {
+          tokenId: tokenId.toString(),
+          imageUrl: metadata.image.replace('https://gateway.pinata.cloud/ipfs/', '/ipfs/'),
+          name: metadata.name,
+          description: metadata.description
+        };
       });
 
       const loadedNfts = await Promise.all(nftPromises);
       setNfts(loadedNfts);
     } catch (err) {
       console.error('Error loading NFTs:', err);
-      setError('Failed to load your NFTs');
+      setError(err instanceof Error ? err.message : 'Failed to load NFTs');
     } finally {
       setIsLoading(false);
     }
@@ -148,46 +167,60 @@ const UserNFTs = ({ userAddress, provider }: { userAddress: string, provider: et
       {/* NFT Detail Modal */}
       {selectedNft && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={closeModal}>
-          <div className="max-w-2xl w-full bg-gray-900 rounded-xl border border-green-400/20 shadow-xl" onClick={e => e.stopPropagation()}>
-            <div className="flex justify-end p-4">
+          <div 
+            className="relative max-w-2xl w-full bg-gray-900 rounded-xl border border-green-400/20 shadow-xl max-h-[90vh] overflow-y-auto" 
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Close button */}
+            <div className="sticky top-4 right-4 z-10 float-right">
               <button 
-                className="h-8 w-8 rounded-full bg-gray-800 flex items-center justify-center hover:bg-gray-700 transition-colors"
+                className="h-8 w-8 rounded-full bg-black/60 flex items-center justify-center hover:bg-black/80 transition-colors"
                 onClick={closeModal}
               >
-                ✕
+                <span className="text-gray-400">✕</span>
               </button>
             </div>
-            <div className="p-4 md:p-6 pt-0">
-              <div className="aspect-square rounded-lg overflow-hidden mb-6 border border-gray-800">
-                {selectedNft.imageUrl ? (
-                  <img 
-                    src={selectedNft.imageUrl} 
-                    alt={selectedNft.name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-gray-900">
-                    <ImageIcon size={48} className="text-gray-700" />
-                  </div>
-                )}
-              </div>
-              
-              <div className="flex justify-between items-start mb-4">
-                <h2 className="text-2xl font-mono text-green-400">{selectedNft.name}</h2>
-                <div className="bg-gray-800 px-3 py-1 rounded-full text-xs font-mono">
-                  Token #{selectedNft.tokenId}
+
+            {/* Modal Content */}
+            <div className="p-4 md:p-6">
+              {/* Image Container with fixed aspect ratio */}
+              <div className="relative w-full rounded-lg overflow-hidden mb-6 border border-gray-800">
+                <div className="aspect-w-1 aspect-h-1">
+                  {selectedNft.imageUrl ? (
+                    <img 
+                      src={selectedNft.imageUrl} 
+                      alt={selectedNft.name}
+                      className="w-full h-full object-contain bg-black/40"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gray-900">
+                      <ImageIcon size={48} className="text-gray-700" />
+                    </div>
+                  )}
                 </div>
               </div>
+              
+              {/* NFT Details */}
+              <div className="flex flex-col gap-4">
+                <div className="flex justify-between items-start flex-wrap gap-2">
+                  <h2 className="text-xl md:text-2xl font-mono text-green-400 break-all">{selectedNft.name}</h2>
+                  <div className="bg-gray-800 px-3 py-1 rounded-full text-xs font-mono flex-shrink-0">
+                    Token #{selectedNft.tokenId}
+                  </div>
+                </div>
 
-              <p className="text-sm text-gray-400 mb-4 line-clamp-3">{selectedNft.description}</p>
+                <p className="text-sm text-gray-400 break-words whitespace-pre-wrap">
+                  {selectedNft.description}
+                </p>
 
-              <div className="flex justify-end">
-                <button 
-                  className="px-4 py-2 bg-green-400 text-black rounded-lg text-sm font-medium hover:bg-green-500 transition-colors"
-                  onClick={closeModal}
-                >
-                  Close
-                </button>
+                <div className="flex justify-end mt-2">
+                  <button 
+                    className="px-6 py-2 bg-green-400 text-black rounded-lg text-sm font-medium hover:bg-green-500 transition-colors"
+                    onClick={closeModal}
+                  >
+                    Close
+                  </button>
+                </div>
               </div>
             </div>
           </div>

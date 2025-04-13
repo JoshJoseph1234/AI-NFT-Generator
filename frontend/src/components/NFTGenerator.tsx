@@ -1,21 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Hexagon, ArrowLeft, Wand2, Wallet, LogOut, AlertCircle, Eye } from 'lucide-react';
+import { Wand2, Wallet, LogOut, AlertCircle, Eye } from 'lucide-react';
 import { generateImage } from '../api/generate';
-import { getContract, CONTRACT_ADDRESS } from '../config/contract';
+import { getContract } from '../config/contract';
 import { useWallet } from '../context/WalletContext';
 import UserNFTs from './UserNFTs';
 import { ethers } from 'ethers';
+import ParticleField from './ParticleField';
 
-const NFTGenerator = () => {
+const NFTGenerator = ({ onBack }) => {
   const { address, provider, signer, connectWallet, disconnectWallet, error: walletError } = useWallet();
   const [prompt, setPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generationProgress, setGenerationProgress] = useState<number>(0);
+  const [generationProgress, setGenerationProgress] = useState(0);
   const [isMinting, setIsMinting] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [metadataUrl, setMetadataUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [localError, setLocalError] = useState<string | null>(null);
   const [isScrolled, setIsScrolled] = useState(false);
   const promptRef = useRef<HTMLTextAreaElement>(null);
 
@@ -28,7 +28,7 @@ const NFTGenerator = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const monitorTransaction = async (tx: ethers.providers.TransactionResponse) => {
+  const monitorTransaction = async (tx: ethers.ContractTransaction) => {
     console.log('Monitoring transaction:', tx.hash);
     const receipt = await tx.wait(2);
     return receipt;
@@ -39,7 +39,6 @@ const NFTGenerator = () => {
     const savedImage = localStorage.getItem('generatedImage');
     const savedMetadata = localStorage.getItem('metadataUrl');
     const savedPrompt = localStorage.getItem('lastPrompt');
-    
     if (savedImage) setGeneratedImage(savedImage);
     if (savedMetadata) setMetadataUrl(savedMetadata);
     if (savedPrompt) setPrompt(savedPrompt);
@@ -123,15 +122,14 @@ const NFTGenerator = () => {
 
       const tx = await contract.mintNFT(address, metadataUrl, {
         gasLimit: gasEstimate.mul(120).div(100),
-        gasPrice: gasPrice.mul(120).div(100)
+        gasPrice: gasPrice.mul(120).div(100),
       });
 
-      const receipt = await tx.wait(2);
-
+      const receipt = await monitorTransaction(tx);
       const mintEvent = receipt.events?.find(e => e.event === 'NFTMinted');
       const transferEvent = receipt.events?.find(e => e.event === 'Transfer');
-      let tokenId;
 
+      let tokenId;
       if (mintEvent && mintEvent.args) {
         tokenId = mintEvent.args.tokenId.toString();
       } else if (transferEvent && transferEvent.args) {
@@ -140,11 +138,15 @@ const NFTGenerator = () => {
         throw new Error('No minting events found in transaction receipt');
       }
 
-      alert(`NFT minted successfully! Token ID: ${tokenId}`);
+      // Clear all generated content after successful minting
       clearLocalStorage();
       setGeneratedImage(null);
       setMetadataUrl(null);
       setPrompt('');
+      
+      // Show success message
+      alert(`NFT minted successfully! Token ID: ${tokenId}`);
+
     } catch (err) {
       console.error('Minting error:', err);
       setError(handleError(err as Error));
@@ -157,69 +159,29 @@ const NFTGenerator = () => {
     try {
       const success = await connectWallet();
       if (!success) {
-        setLocalError('Failed to connect wallet');
+        setError('Failed to connect wallet');
         return;
       }
     } catch (err) {
-      setLocalError('Wallet connection failed: ' + (err instanceof Error ? err.message : 'Unknown error'));
+      setError('Wallet connection failed: ' + (err instanceof Error ? err.message : 'Unknown error'));
     }
   };
 
-  const handleBackClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    if (confirm('Are you sure you want to go back? This will disconnect your wallet.')) {
-      disconnectWallet();
-      window.location.reload();
-    }
+  const handleBackClick = (e: React.MouseEvent | null) => {
+    if (e) e.preventDefault();
+    disconnectWallet();
+    onBack();
   };
 
   return (
     <div className="min-h-screen bg-black text-gray-200 relative">
-      {/* Background Patterns */}
-      <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9IiMxMTExMTEiLz48L3N2Zz4=')] opacity-20"></div>
-      <div className="absolute inset-0 border border-gray-800 m-4 pointer-events-none"></div>
-
-      {/* Navigation Bar */}
-      <nav className={`sticky top-0 z-30 flex justify-between items-center p-4 md:p-6 transition-all duration-300 ${isScrolled ? 'bg-black/80 backdrop-blur-md border-b border-gray-800' : ''}`}>
-        <div className="flex items-center px-4 py-2 space-x-2">
-          <Hexagon className="text-green-400" size={24} />
-          <span className="text-xl font-mono tracking-wider">OPULENT NFTs</span>
-        </div>
-        
-        <div className="flex items-center px-4 py-2 space-x-2 md:space-x-4">
-          {!address ? (
-            <button
-              onClick={handleConnectWallet}
-              className="px-3 py-2 md:px-4 md:py-2 bg-green-400/10 hover:bg-green-400/20 text-green-400 rounded-lg font-mono flex items-center space-x-2 transition-colors text-sm md:text-base"
-            >
-              <Wallet size={16} />
-              <span className="hidden sm:inline">CONNECT WALLET</span>
-            </button>
-          ) : (
-            <>
-              <span className="font-mono text-xs md:text-sm bg-gray-800/50 py-1 px-2 rounded">{`${address.slice(0, 4)}...${address.slice(-4)}`}</span>
-              <button
-                onClick={disconnectWallet}
-                className="px-2 py-1 md:px-3 md:py-2 bg-red-500/20 text-red-400 rounded-lg font-mono flex items-center space-x-1 text-xs md:text-sm"
-              >
-                <LogOut size={14} />
-                <span className="hidden sm:inline">DISCONNECT</span>
-              </button>
-            </>
-          )}
-          <button
-            onClick={handleBackClick}
-            className="flex items-center space-x-1 px-2 py-1 md:px-3 md:py-2 text-xs md:text-sm font-mono bg-green-400/10 hover:bg-green-400/20 text-green-400 rounded transition-colors"
-          >
-            <ArrowLeft size={14} />
-            <span className="hidden sm:inline">BACK</span>
-          </button>
-        </div>
-      </nav>
-
+      {/* Background Effects */}
+      <div className="absolute inset-0 bg-gradient-radial from-black to-gray-900 z-0" />
+      <div className="absolute inset-0 bg-grid-pattern opacity-20 z-0" />
+      <ParticleField />
+      
       {/* Main Content */}
-      <div className="max-w-4xl mx-auto px-4 md:px-6 py-6 md:py-12">
-        {/* Explanation Message for Wallet Connection */}
+      <div className="max-w-4xl mx-auto px-4 md:px-6 py-24 md:py-32">
         {!address && (
           <div className="mb-8 p-4 bg-green-400/5 border border-green-400/20 rounded-lg text-center">
             <div className="flex items-center justify-center mb-2">
@@ -234,8 +196,41 @@ const NFTGenerator = () => {
 
         {/* NFT Generation Interface */}
         <div className="bg-black/40 backdrop-blur-sm border border-green-400/20 p-4 md:p-8 rounded-xl shadow-xl mb-8">
-          <h2 className="text-2xl md:text-3xl font-light mb-6 text-white">Create Your <span className="text-green-400">NFT</span></h2>
-          
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between px-1 py-2 mb-6">
+            <h2 className="text-2xl md:text-3xl font-light text-white mb-4 md:mb-0">
+              Create Your <span className="text-green-400">NFT</span>
+            </h2>
+
+            <div className="flex items-center space-x-3">
+              {!address ? (
+                <button
+                  onClick={handleConnectWallet}
+                  className="px-4 py-2 bg-green-400/10 hover:bg-green-400/20 text-green-400 
+                            rounded-lg font-mono flex items-center space-x-2 transition-colors 
+                            text-sm md:text-base"
+                >
+                  <Wallet size={16} />
+                  <span className="hidden sm:inline">CONNECT WALLET</span>
+                </button>
+              ) : (
+                <>
+                  <span className="font-mono text-xs md:text-sm bg-gray-800/50 py-1 px-2 rounded">
+                    {`${address.slice(0, 4)}...${address.slice(-4)}`}
+                  </span>
+                  <button
+                    onClick={disconnectWallet}
+                    className="px-3 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 
+                              rounded-lg font-mono flex items-center space-x-2 transition-colors 
+                              text-xs md:text-sm"
+                  >
+                    <LogOut size={14} />
+                    <span className="hidden sm:inline">DISCONNECT</span>
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+
           <div className="mb-6">
             <label className="block text-sm font-mono text-gray-400 mb-2 flex items-center">
               <Eye size={14} className="mr-2" />
@@ -255,14 +250,14 @@ const NFTGenerator = () => {
               </span>
             </div>
           </div>
-          
+
           {error && (
             <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm flex items-start">
               <AlertCircle size={16} className="mr-2 mt-0.5 flex-shrink-0" />
               <span>{error}</span>
             </div>
           )}
-          
+
           {isGenerating && (
             <div className="mb-6 p-4 bg-gray-800/50 rounded-lg">
               <div className="flex justify-between items-center mb-2">
@@ -277,7 +272,7 @@ const NFTGenerator = () => {
               </div>
             </div>
           )}
-          
+
           {generatedImage && (
             <div className="mb-6">
               <div className="relative rounded-lg overflow-hidden border border-green-400/30 shadow-lg shadow-green-400/5">
@@ -314,7 +309,7 @@ const NFTGenerator = () => {
               </div>
             </div>
           )}
-          
+
           <button
             onClick={handleGenerate}
             disabled={!address || !prompt || isGenerating}

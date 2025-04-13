@@ -29,7 +29,8 @@ export async function generateImage(prompt: string): Promise<GenerationResponse>
   try {
     console.log('Sending request with prompt:', prompt);
     
-    const response = await fetch('http://localhost:5000/api/generate', {
+    // Use the proxied URL instead of direct localhost
+    const response = await fetch('/api/generate', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

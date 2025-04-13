@@ -6,6 +6,7 @@
 @layer base {
   html {
     scroll-behavior: smooth;
+    scroll-padding-top: 80px; /* Adjust based on your header height */
   }
   body {
     @apply antialiased bg-[#0A0A0A] text-white overflow-x-hidden;
@@ -20,7 +21,7 @@
     @apply font-['Inter'] leading-relaxed;
   }
   button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible {
-    @apply outline-none ring-2 ring-[#ADFF2F] ring-offset-2 ring-offset-black;
+    @apply outline-none ring-2 ring-green-400 ring-offset-2 ring-offset-black;
   }
 }
 
@@ -93,6 +94,63 @@
     transform: translateZ(0);
     -webkit-transform: translateZ(0);
   }
+
+  /* Learn More Page Specific Styles */
+  .glassmorphism-card {
+    @apply backdrop-blur-md bg-black/40 shadow-xl;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5), inset 0 0 1px rgba(255, 255, 255, 0.2);
+  }
+
+  .gradient-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-[#ADFF2F] to-white;
+  }
+
+  /* Enhance card hover effects */
+  .glassmorphism-card:hover {
+    box-shadow: 0 0 30px rgba(173, 255, 47, 0.2);
+    border-color: rgba(173, 255, 47, 0.4);
+  }
+
+  /* Active Section Indicator */
+  .nav-indicator {
+    @apply absolute bottom-0 left-0 right-0 h-0.5;
+    background: linear-gradient(to right, #4ade80, #22c55e);
+    transform-origin: left;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Smooth transitions for nav items */
+  .nav-button {
+    transition: color 0.3s ease;
+  }
+
+  .nav-button:hover .nav-indicator {
+    transform: scaleX(1.1);
+  }
+
+  /* Digital Noise Effect */
+  .digital-noise {
+    @apply pointer-events-none fixed inset-0 z-50 mix-blend-overlay;
+    background-size: cover;
+    filter: contrast(170%) brightness(100%);
+  }
+
+  /* Scanline Effect */
+  .scanline {
+    @apply pointer-events-none fixed inset-0 z-40;
+    background-repeat: repeat;
+    mix-blend-mode: overlay;
+  }
+
+  .scanline-moving {
+    @apply absolute w-full h-[2px];
+    background: linear-gradient(
+      to right,
+      transparent,
+      rgba(173, 255, 47, 0.2),
+      transparent
+    );
+  }
 }
 
 /* Utilities */
@@ -119,14 +177,6 @@
     animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 
-  /* Scanline Effect */
-  .scanline-effect {
-    background: linear-gradient(to bottom, transparent, rgba(173, 255, 47, 0.2), transparent);
-    height: 10px;
-    width: 100%;
-    animation: scanline 3s linear infinite;
-  }
-
   /* Text effects */
   .gradient-text {
     @apply bg-clip-text text-transparent bg-gradient-to-r from-[#ADFF2F] to-white;
@@ -150,6 +200,11 @@
 
   .smooth-scroll {
     animation: smoothScroll 20s linear infinite;
+  }
+
+  /* Intersection Observer Styles */
+  .scroll-mt-32 {
+    scroll-margin-top: 8rem;
   }
 }
 
@@ -176,15 +231,6 @@
   }
 }
 
-@keyframes scanline {
-  0% {
-    transform: translateY(-100vh);
-  }
-  100% {
-    transform: translateY(100vh);
-  }
-}
-
 @keyframes blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }
@@ -199,7 +245,7 @@
 
 .nft-card:hover {
   transform: scale(1.05) translateY(-5px);
-  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.5), 0 0 15px rgba(173, 255, 47, 0.3);
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.5), 0 0 15px rgba(74, 222, 128, 0.3);
 }
 
 .nft-card::after {
@@ -210,12 +256,12 @@
   padding: 1px;
   background: linear-gradient(
     135deg,
-    rgba(173, 255, 47, 0.8),
-    rgba(255, 255, 255, 0.4) 20%,
+    rgba(74, 222, 128, 0.8),    /* green-400 */
+    rgba(134, 239, 172, 0.4) 20%,  /* green-300 */
     transparent 40%,
     transparent 60%,
-    rgba(173, 255, 47, 0.4) 80%,
-    rgba(173, 255, 47, 0.8)
+    rgba(74, 222, 128, 0.4) 80%,   /* green-400 */
+    rgba(74, 222, 128, 0.8)        /* green-400 */
   );
   -webkit-mask: linear-gradient(black, black) content-box, linear-gradient(black, black);
   -webkit-mask-composite: xor;
@@ -229,9 +275,9 @@
   @apply absolute inset-0 rounded-xl opacity-0;
   background: linear-gradient(
     135deg,
-    rgba(173, 255, 47, 0.3) 0%,
-    rgba(255, 255, 255, 0.1) 50%,
-    rgba(173, 255, 47, 0.3) 100%
+    rgba(74, 222, 128, 0.3) 0%,    /* green-400 */
+    rgba(134, 239, 172, 0.1) 50%,   /* green-300 */
+    rgba(74, 222, 128, 0.3) 100%    /* green-400 */
   );
   transition: opacity 0.5s ease;
 }
@@ -243,6 +289,21 @@
 
 .nft-card:hover::before {
   @apply opacity-100;
+}
+
+@keyframes border-flow {
+  0% {
+    background-position: 0% 0%;
+    filter: hue-rotate(0deg);
+  }
+  50% {
+    filter: hue-rotate(10deg);
+    opacity: 0.8;
+  }
+  100% {
+    background-position: 200% 200%;
+    filter: hue-rotate(0deg);
+  }
 }
 
 /* Custom Scrollbar */
@@ -264,12 +325,6 @@
   @apply bg-[#ADFF2F]/40;
 }
 
-/* SVG Noise Filter */
-.noise-svg {
-  width: 100%;
-  height: 100%;
-}
-
 /* Tooltip Styles */
 .tooltip {
   @apply relative inline-block;
@@ -287,9 +342,18 @@
   @apply visible opacity-100;
 }
 
-/* Enhanced focus states for accessibility */
-a:focus, button:focus, input:focus, select:focus, textarea:focus {
-  @apply outline-none ring-2 ring-[#ADFF2F] ring-offset-1 ring-offset-black;
+/* Enhanced focus states for accessibility - update this section */
+a:focus, 
+button:focus:not(.nav-button), 
+input:focus, 
+select:focus, 
+textarea:focus {
+  @apply outline-none ring-2 ring-green-400 ring-offset-1 ring-offset-black;
+}
+
+/* Add this new class */
+.nav-button:focus {
+  @apply outline-none;
 }
 
 /* Added media queries for better responsiveness */
@@ -332,4 +396,30 @@ a:focus, button:focus, input:focus, select:focus, textarea:focus {
     background-position: 200% 200%;
     filter: hue-rotate(0deg);
   }
+}
+
+/* Page Transition Styles */
+.page-transition-container {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+.page-transition-slide-enter {
+  transform: translateX(100%);
+}
+
+.page-transition-slide-enter-active {
+  transform: translateX(0%);
+  transition: transform 500ms ease-in-out;
+}
+
+.page-transition-slide-exit {
+  transform: translateX(0%);
+}
+
+.page-transition-slide-exit-active {
+  transform: translateX(-100%);
+  transition: transform 500ms ease-in-out;
 }

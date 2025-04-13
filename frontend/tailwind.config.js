@@ -5,6 +5,8 @@ export default {
     extend: {
       fontFamily: {
         mono: ['Space Mono', 'monospace'],
+        gantari: [ 'Gantari', 'sans-serif'],
+        inter: ['Inter', 'sans-serif'],
       },
       animation: {
         'spin-slow': 'spin 10s linear infinite',
