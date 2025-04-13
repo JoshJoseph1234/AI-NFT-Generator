@@ -16,7 +16,8 @@ export default defineConfig({
     headers: {
       'Content-Security-Policy': [
         "default-src 'self'",
-        "connect-src 'self' https://*.pinata.cloud https://*.ipfs.io https://*.infura.io https://*.dweb.link https://*.nftstorage.link https://api.replicate.com https://fonts.googleapis.com https://fonts.gstatic.com",
+        // Add localhost to connect-src
+        "connect-src 'self' http://localhost:* https://localhost:* https://*.pinata.cloud https://*.ipfs.io https://*.infura.io https://*.dweb.link https://*.nftstorage.link https://api.replicate.com https://fonts.googleapis.com https://fonts.gstatic.com",
         "img-src 'self' data: blob: https://*.pinata.cloud https://*.ipfs.io https://*.infura.io https://*.dweb.link https://*.nftstorage.link https://img.freepik.com",
         "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
@@ -27,12 +28,8 @@ export default defineConfig({
     },
     proxy: {
       '/api': {
-        target: 'https://api.replicate.com',
+        target: 'http://localhost:5000',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '/v1'),
-        headers: {
-          'Authorization': `Token ${process.env.VITE_REPLICATE_API_TOKEN}`
-        }
       },
       '/ipfs': {
         target: 'https://gateway.pinata.cloud',
