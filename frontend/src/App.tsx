@@ -83,7 +83,6 @@ function App() {
     const handleScroll = () => {
       setScrolled(window.scrollY > 20);
       
-      // Determine active section based on scroll position (for future sections)
       if (window.scrollY < 300) {
         setActiveSection('hero');
       } else {
@@ -94,6 +93,36 @@ function App() {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Modify the scroll control effect to only work on home page
+  useEffect(() => {
+    const isLaptop = () => {
+      return window.innerWidth >= 1024 && window.innerWidth <= 1920;
+    };
+    
+    const handleScrollBehavior = () => {
+      // Only disable scroll on home page and laptop devices
+      if (currentPage === 'home' && isLaptop()) {
+        document.body.style.overflow = 'hidden';
+        document.documentElement.style.overflow = 'hidden';
+      } else {
+        document.body.style.overflow = '';
+        document.documentElement.style.overflow = '';
+      }
+    };
+    
+    // Initialize scroll behavior
+    handleScrollBehavior();
+    
+    // Update on window resize
+    window.addEventListener('resize', handleScrollBehavior);
+    
+    return () => {
+      window.removeEventListener('resize', handleScrollBehavior);
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+    };
+  }, [currentPage]); // Add currentPage as dependency
 
   // Helper function to handle navigation with proper transitions
   const navigateTo = (page: string) => {
@@ -164,7 +193,7 @@ function App() {
 
                 <main className="relative z-10">
                   {/* Hero Section - Enhanced and Optimized for Mobile */}
-                  <section className="min-h-screen pt-8 px-4 lg:px-12 max-w-screen-2xl mx-auto flex flex-col justify-center">
+                  <section className="min-h-screen pt-24 sm:pt-32 md:pt-6 px-4 lg:px-12 max-w-screen-2xl mx-auto flex flex-col justify-center">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
                       {/* Left Side: Text Content */}
                       <motion.div

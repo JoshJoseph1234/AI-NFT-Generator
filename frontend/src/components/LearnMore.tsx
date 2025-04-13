@@ -93,7 +93,7 @@ function LearnMore({ onBack }) {
         onSectionChange={handleSectionChange}
       />
 
-      <div className="relative z-10 container mx-auto px-4 pt-[120px]">
+      <div className="relative z-10 container mx-auto px-6 pt-[120px]">
         <div className="max-w-4xl mx-auto">
           <motion.h1
             className="text-4xl md:text-5xl font-gantari font-bold mb-8 bg-clip-text text-transparent bg-gradient-to-r from-green-500 to-green-300"

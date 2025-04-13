@@ -20,6 +20,34 @@ const UserNFTs = ({ userAddress, provider }: { userAddress: string, provider: et
     loadUserNFTs();
   }, [userAddress]);
 
+  const fetchMetadata = async (uri: string) => {
+    try {
+      // Convert IPFS URI to use our proxy
+      const proxyUri = uri.replace('https://gateway.pinata.cloud/ipfs/', '/ipfs/');
+      const response = await fetch(proxyUri, {
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      // Convert image URL to use proxy as well
+      if (data.image) {
+        data.image = data.image.replace('https://gateway.pinata.cloud/ipfs/', '/ipfs/');
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Error fetching metadata:', error);
+      throw error;
+    }
+  };
+
   const loadUserNFTs = async () => {
     if (!userAddress || !provider) return;
 
@@ -32,32 +60,22 @@ const UserNFTs = ({ userAddress, provider }: { userAddress: string, provider: et
       const tokenIds = await contract.getUserTokens(userAddress);
       
       const nftPromises = tokenIds.map(async (tokenId: number) => {
-        try {
-          const tokenURI = await contract.tokenURI(tokenId);
-          const metadata = await fetch(tokenURI).then(res => res.json());
-          
-          return {
-            tokenId: tokenId.toString(),
-            imageUrl: metadata.image,
-            name: metadata.name || `NFT #${tokenId}`,
-            description: metadata.description || 'No description available'
-          };
-        } catch (err) {
-          console.error(`Error loading NFT #${tokenId}:`, err);
-          return {
-            tokenId: tokenId.toString(),
-            imageUrl: '',
-            name: `NFT #${tokenId}`,
-            description: 'Failed to load metadata'
-          };
-        }
+        const tokenURI = await contract.tokenURI(tokenId);
+        const metadata = await fetchMetadata(tokenURI);
+        
+        return {
+          tokenId: tokenId.toString(),
+          imageUrl: metadata.image.replace('https://gateway.pinata.cloud/ipfs/', '/ipfs/'),
+          name: metadata.name,
+          description: metadata.description
+        };
       });
 
       const loadedNfts = await Promise.all(nftPromises);
       setNfts(loadedNfts);
     } catch (err) {
       console.error('Error loading NFTs:', err);
-      setError('Failed to load your NFTs');
+      setError(err instanceof Error ? err.message : 'Failed to load NFTs');
     } finally {
       setIsLoading(false);
     }
