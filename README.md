@@ -1,4 +1,3 @@
-
 # Opulent NFTs – AI NFT Generator
 
 Opulent NFTs is a full-stack platform that enables users to generate unique AI-powered NFT artwork, mint them on the blockchain, and manage their NFT collections. The project combines a modern React frontend, an Express backend with AI image generation and IPFS integration, and Ethereum smart contracts.
@@ -13,6 +12,14 @@ Opulent NFTs is a full-stack platform that enables users to generate unique AI-p
 - **Wallet Integration**: Connect and manage your wallet with MetaMask.
 - **Personal NFT Gallery**: View and manage your minted NFTs.
 - **Modern UI**: Responsive, animated interface built with React, TailwindCSS, and Framer Motion.
+
+---
+
+## 🚀 Deployed Site
+
+> **Note:** Only the frontend is currently deployed and available. The backend is suspended, so features requiring backend/API access may not function.
+
+**Live Frontend:** [https://ai-nft-generator-one.vercel.app/]
 
 ---
 
